@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../api/models.dart';
 import '../../services/places_service.dart';
@@ -142,24 +140,15 @@ class PlacePickerView extends GetView<PlacePickerController> {
   }
 
   Widget _mapPicker() {
-    final initial = controller.args.initial ?? controller.places.origin.value;
     return Column(
       children: [
         _header('Escolher no mapa', onBack: () => controller.mapMode.value = false),
         Expanded(
           child: Stack(
             children: [
-              FlutterMap(
-                mapController: controller.mapController,
-                options: MapOptions(
-                  initialCenter: initial == null ? const LatLng(-20.80, -49.37) : toLatLng(initial),
-                  initialZoom: 16,
-                  interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
-                ),
-                children: [
-                  osmTileLayer(),
-                  const RichAttributionWidget(attributions: [TextSourceAttribution('© OpenStreetMap')]),
-                ],
+              CenterPickerMap(
+                initial: controller.center,
+                onCenterChanged: (center) => controller.center = center,
               ),
               // Pino fixo no centro: o usuário move o mapa por baixo dele.
               const IgnorePointer(

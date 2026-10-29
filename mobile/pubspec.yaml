@@ -43,6 +43,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   geolocator: ^14.1.2
+  apple_maps_flutter: ^1.4.0
 
 dev_dependencies:
   flutter_test:

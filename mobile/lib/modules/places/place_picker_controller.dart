@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../api/geocoding.dart';
 import '../../api/models.dart';
@@ -21,7 +21,6 @@ class PlacePickerController extends GetxController {
   final PlacesService places = Get.find();
 
   final query = TextEditingController();
-  final mapController = MapController();
 
   final results = <Place>[].obs;
   final searching = false.obs;
@@ -31,11 +30,16 @@ class PlacePickerController extends GetxController {
 
   final _term = ''.obs;
 
+  /// Centro atual do mapa de escolha, atualizado pela view a cada movimento.
+  late LatLng center;
+
   PlacePickerController(this.args);
 
   @override
   void onInit() {
     super.onInit();
+    final initial = args.initial ?? places.origin.value;
+    center = initial == null ? const LatLng(-20.80, -49.37) : toLatLng(initial);
     query.addListener(() => _term.value = query.text.trim());
     // O Nominatim pede no máximo uma requisição por segundo.
     debounce(_term, _search, time: const Duration(milliseconds: 900));
@@ -76,7 +80,6 @@ class PlacePickerController extends GetxController {
 
   /// Confirma o ponto no centro do mapa, buscando um nome para ele.
   Future<void> confirmMapCenter() async {
-    final center = mapController.camera.center;
     confirming.value = true;
     final place = await _geocoding.reverse(center.latitude, center.longitude);
     confirming.value = false;
@@ -86,7 +89,6 @@ class PlacePickerController extends GetxController {
   @override
   void onClose() {
     query.dispose();
-    mapController.dispose();
     super.onClose();
   }
 }

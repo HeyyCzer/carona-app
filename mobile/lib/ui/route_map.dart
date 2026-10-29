@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -5,10 +6,11 @@ import 'package:latlong2/latlong.dart';
 import '../api/models.dart';
 import '../config.dart';
 import '../theme.dart';
+import 'apple_route_map.dart';
 
 LatLng toLatLng(Place place) => LatLng(place.latitude, place.longitude);
 
-/// Mapa do OpenStreetMap com o trajeto e um destaque opcional para o ponto de embarque.
+/// Mapa com o trajeto e um destaque opcional para o ponto de embarque.
 /// Sem [path], o trajeto é desenhado como linha reta entre [from] e [to].
 class RouteMap extends StatelessWidget {
   final Place? from;
@@ -23,6 +25,10 @@ class RouteMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (useAppleMaps) {
+      return AppleRouteMap(
+          from: from, to: to, path: path, pickup: pickup, pickupLabel: pickupLabel, interactive: interactive);
+    }
     final line = path != null && path!.length >= 2
         ? path!
         : [if (from != null && to != null) ...[toLatLng(from!), toLatLng(to!)]];
@@ -67,7 +73,7 @@ class RouteMap extends StatelessWidget {
               child: _PickupMarker(label: pickupLabel),
             ),
         ]),
-        const RichAttributionWidget(attributions: [TextSourceAttribution('© OpenStreetMap')]),
+        osmAttribution(),
       ],
     );
   }
@@ -77,6 +83,11 @@ TileLayer osmTileLayer() => TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       userAgentPackageName: AppConfig.userAgent,
     );
+
+Widget osmAttribution() => const RichAttributionWidget(attributions: [TextSourceAttribution('© OpenStreetMap')]);
+
+/// Apple Maps no iOS; no Android segue o OpenStreetMap via flutter_map.
+bool get useAppleMaps => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
 class _RingMarker extends StatelessWidget {
   const _RingMarker();
