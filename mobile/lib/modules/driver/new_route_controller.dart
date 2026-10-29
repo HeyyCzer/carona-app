@@ -14,7 +14,7 @@ class NewRouteController extends GetxController {
   final CaronaApi _api = Get.find();
   final PlacesService _places = Get.find();
 
-  static const maxDetour = 500;
+  static const maxDetour = 1000;
   static const maxSeats = 8;
   static const maxPriceCents = 100_00;
 

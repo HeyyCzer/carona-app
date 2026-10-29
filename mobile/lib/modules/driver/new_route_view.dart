@@ -227,7 +227,7 @@ class NewRouteView extends GetView<NewRouteController> {
                 children: [
                   Expanded(
                     child: Text(
-                      '${controller.detourMeters.value} m',
+                      formatDistance(controller.detourMeters.value),
                       style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -250,11 +250,11 @@ class NewRouteView extends GetView<NewRouteController> {
                   onChanged: (v) => controller.detourMeters.value = v.round(),
                 ),
               ),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Só na rota', style: mutedStyle),
-                  Text('${NewRouteController.maxDetour} m', style: mutedStyle),
+                  const Text('Só na rota', style: mutedStyle),
+                  Text(formatDistance(NewRouteController.maxDetour), style: mutedStyle),
                 ],
               ),
             ],
