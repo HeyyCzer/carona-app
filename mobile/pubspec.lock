@@ -81,14 +81,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
-  cupertino_ui:
-    dependency: transitive
-    description:
-      name: cupertino_ui
-      sha256: a47c4e7c66fd7444a063a602597fceb238f705c3f6b1322bc0053d0a2638ee6e
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.4"
   dart_earcut:
     dependency: transitive
     description:
@@ -151,7 +143,7 @@ packages:
     source: hosted
     version: "6.0.0"
   flutter_localizations:
-    dependency: transitive
+    dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
@@ -173,14 +165,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  google_fonts:
+  get:
     dependency: "direct main"
     description:
-      name: google_fonts
-      sha256: fdbbfbbb1a62f376ab29fa9627561d389751fb984da0b630ce3326e272911c8a
+      name: get
+      sha256: "5ed34a7925b85336e15d472cc4cfe7d9ebf4ab8e8b9f688585bf6b50f4c3d79a"
       url: "https://pub.dev"
     source: hosted
-    version: "9.0.0"
+    version: "4.7.3"
   hooks:
     dependency: transitive
     description:
@@ -301,14 +293,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
-  material_ui:
-    dependency: transitive
-    description:
-      name: material_ui
-      sha256: e4031746f96c8316864d9b92bce375f1320a36ed56e166307e1e1bda9d90b4ab
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.8.0"
   meta:
     dependency: transitive
     description:
@@ -325,14 +309,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
-  nested:
-    dependency: transitive
-    description:
-      name: nested
-      sha256: "03bac4c528c64c95c722ec99280375a6f2fc708eec17c7b3f07253b626cd2a20"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
   objective_c:
     dependency: transitive
     description:
@@ -437,14 +413,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
-  provider:
-    dependency: "direct main"
-    description:
-      name: provider
-      sha256: "4e82183fa20e5ca25703ead7e05de9e4cceed1fbd1eadc1ac3cb6f565a09f272"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.1.5+1"
   pub_semver:
     dependency: transitive
     description:
@@ -652,4 +620,4 @@ packages:
     version: "3.1.4"
 sdks:
   dart: ">=3.13.3 <4.0.0"
-  flutter: ">=3.47.0"
+  flutter: ">=3.44.0"
