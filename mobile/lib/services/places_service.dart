@@ -73,19 +73,34 @@ class PlacesService extends GetxService {
         throw const LocationUnavailable('Permita o acesso à localização nos ajustes do aparelho.');
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(timeLimit: Duration(seconds: 15)),
-      );
+      final position = await _currentPosition();
       final place = await geocoding.reverse(position.latitude, position.longitude) ??
           Place(label: 'Minha localização', latitude: position.latitude, longitude: position.longitude);
       here.value = place;
       return place;
     } on LocationUnavailable {
       rethrow;
-    } catch (_) {
+    } catch (e) {
+      Get.log('Falha ao obter localização: $e', isError: true);
       throw const LocationUnavailable('Não foi possível obter sua localização agora.');
     } finally {
       locating.value = false;
+    }
+  }
+
+  /// Posição atual; se o GPS não der um fix a tempo (lugar fechado, emulador), usa a última posição conhecida.
+  Future<Position> _currentPosition() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+    } catch (e) {
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null) return last;
+      rethrow;
     }
   }
 
