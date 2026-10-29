@@ -45,7 +45,7 @@ data class RouteResponseDto(
             id = route.id!!,
             origin = LocationDto.from(route.origin),
             destination = LocationDto.from(route.destination),
-            distanceMeters = Geo.roadDistanceMeters(route.origin, route.destination),
+            distanceMeters = route.outboundPath?.distanceMeters ?: Geo.roadDistanceMeters(route.origin, route.destination),
             weekdays = route.weekdays.sorted(),
             outboundTime = route.outboundTime,
             returnTime = route.returnTime,
@@ -57,3 +57,12 @@ data class RouteResponseDto(
         )
     }
 }
+
+data class RoutePreviewDto(
+    val distanceMeters: Int,
+    val durationMinutes: Long,
+    /** Trajeto em encoded polyline (precisão 5). */
+    val path: String,
+    /** Falso quando o OSRM não respondeu e [path] é só a linha reta. */
+    val followsRoads: Boolean
+)

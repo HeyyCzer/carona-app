@@ -12,8 +12,11 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import me.rafaelpereira.caronaapp.utils.Geo
 import java.time.LocalDate
 import java.time.LocalTime
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 /**
  * Uma ocorrência concreta de uma [Route]: um dia e um sentido (ida ou volta).
@@ -60,5 +63,18 @@ class Ride(
 
     val to: Location
         get() = if (direction == RideDirection.OUTBOUND) route.destination else route.origin
+
+    val roadPath: RoadPath? get() = route.path(direction)
+
+    /** Pontos do trajeto pelas ruas ou, sem ele, a linha reta entre a saída e a chegada. */
+    fun pathPoints(): List<Location> = roadPath?.points() ?: listOf(from, to)
+
+    val distanceMeters: Int get() = roadPath?.distanceMeters ?: Geo.roadDistanceMeters(from, to)
+
+    /** Minutos de viagem até a parte [fraction] do trajeto (1 = chegada). */
+    fun travelMinutes(fraction: Double = 1.0): Long {
+        val path = roadPath ?: return Geo.travelMinutes((Geo.roadDistanceMeters(from, to) * fraction).roundToInt())
+        return ceil(path.durationSeconds * fraction / 60).toLong()
+    }
 
 }

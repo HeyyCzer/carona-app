@@ -13,7 +13,9 @@ import tools.jackson.databind.ObjectMapper
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = ["spring.datasource.url=jdbc:sqlite:file:test?mode=memory&cache=shared"])
+@TestPropertySource(
+    properties = ["spring.datasource.url=jdbc:sqlite:file:test?mode=memory&cache=shared", "app.routing.osrm-url="]
+)
 class UserControllerTests {
 
     @Autowired

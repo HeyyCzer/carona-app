@@ -55,7 +55,7 @@ class RideRequestService(
                 ride = ride,
                 recurring = dto.recurring,
                 pickup = pickup,
-                detourMeters = Geo.detourMeters(ride.from, ride.to, pickup)
+                detourMeters = Geo.detourMeters(ride.pathPoints(), pickup)
             )
         )
         return toResponse(request)

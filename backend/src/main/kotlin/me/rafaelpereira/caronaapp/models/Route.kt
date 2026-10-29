@@ -52,6 +52,20 @@ class Route(
 
     var returnTime: LocalTime?,
 
+    /** Trajeto pelas ruas da ida; nulo se o OSRM não respondeu, e aí vale a linha reta. */
+    @Embedded
+    @AttributeOverride(name = "polyline", column = Column(name = "outbound_polyline", columnDefinition = "TEXT"))
+    @AttributeOverride(name = "distanceMeters", column = Column(name = "outbound_distance_meters"))
+    @AttributeOverride(name = "durationSeconds", column = Column(name = "outbound_duration_seconds"))
+    var outboundPath: RoadPath? = null,
+
+    /** Trajeto pelas ruas da volta, que pode diferir da ida por causa das mãos de direção. */
+    @Embedded
+    @AttributeOverride(name = "polyline", column = Column(name = "return_polyline", columnDefinition = "TEXT"))
+    @AttributeOverride(name = "distanceMeters", column = Column(name = "return_distance_meters"))
+    @AttributeOverride(name = "durationSeconds", column = Column(name = "return_duration_seconds"))
+    var returnPath: RoadPath? = null,
+
     @Column(nullable = false)
     var maxDetourMeters: Int,
 
@@ -74,6 +88,11 @@ class Route(
     fun departureTime(direction: RideDirection): LocalTime? = when (direction) {
         RideDirection.OUTBOUND -> outboundTime
         RideDirection.RETURN -> returnTime
+    }
+
+    fun path(direction: RideDirection): RoadPath? = when (direction) {
+        RideDirection.OUTBOUND -> outboundPath
+        RideDirection.RETURN -> returnPath
     }
 
 }

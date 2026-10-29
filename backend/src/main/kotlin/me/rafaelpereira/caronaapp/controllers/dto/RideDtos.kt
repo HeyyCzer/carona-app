@@ -3,7 +3,7 @@ package me.rafaelpereira.caronaapp.controllers.dto
 import me.rafaelpereira.caronaapp.models.Ride
 import me.rafaelpereira.caronaapp.models.RideDirection
 import me.rafaelpereira.caronaapp.models.RideStatus
-import me.rafaelpereira.caronaapp.utils.Geo
+import me.rafaelpereira.caronaapp.utils.Polyline
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -15,6 +15,9 @@ data class RideResponseDto(
     val departureTime: LocalTime,
     val estimatedArrivalTime: LocalTime,
     val status: RideStatus,
+    val distanceMeters: Int,
+    /** Trajeto em encoded polyline (precisão 5): pelas ruas ou, sem OSRM, a linha reta. */
+    val path: String,
     val from: LocationDto,
     val to: LocationDto,
     val driver: PersonDto,
@@ -29,10 +32,10 @@ data class RideResponseDto(
             direction = ride.direction,
             date = ride.date,
             departureTime = ride.departureTime,
-            estimatedArrivalTime = ride.departureTime.plusMinutes(
-                Geo.travelMinutes(Geo.roadDistanceMeters(ride.from, ride.to))
-            ),
+            estimatedArrivalTime = ride.departureTime.plusMinutes(ride.travelMinutes()),
             status = ride.status,
+            distanceMeters = ride.distanceMeters,
+            path = ride.roadPath?.polyline ?: Polyline.encode(listOf(ride.from, ride.to)),
             from = LocationDto.from(ride.from),
             to = LocationDto.from(ride.to),
             driver = PersonDto.from(ride.driver),
@@ -45,7 +48,7 @@ data class RideResponseDto(
 
 data class RideSearchResultDto(
     val ride: RideResponseDto,
-    /** Distância em linha reta da origem do passageiro até o ponto de embarque sugerido. */
+    /** Distância em linha reta da origem do passageiro até o ponto de embarque sugerido, no trajeto. */
     val distanceFromYouMeters: Int,
     val pickupPoint: LocationDto,
     val estimatedPickupTime: LocalTime

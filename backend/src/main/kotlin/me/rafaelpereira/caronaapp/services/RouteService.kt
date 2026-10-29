@@ -1,7 +1,9 @@
 package me.rafaelpereira.caronaapp.services
 
 import me.rafaelpereira.caronaapp.controllers.dto.CreateRouteDto
+import me.rafaelpereira.caronaapp.controllers.dto.RoutePreviewDto
 import me.rafaelpereira.caronaapp.controllers.dto.RouteResponseDto
+import me.rafaelpereira.caronaapp.models.Location
 import me.rafaelpereira.caronaapp.models.RideRequestStatus
 import me.rafaelpereira.caronaapp.models.RideStatus
 import me.rafaelpereira.caronaapp.models.Route
@@ -9,6 +11,8 @@ import me.rafaelpereira.caronaapp.repositories.RideRepository
 import me.rafaelpereira.caronaapp.repositories.RideRequestRepository
 import me.rafaelpereira.caronaapp.repositories.RouteRepository
 import me.rafaelpereira.caronaapp.repositories.UserRepository
+import me.rafaelpereira.caronaapp.utils.Geo
+import me.rafaelpereira.caronaapp.utils.Polyline
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -16,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.time.Clock
 import java.time.LocalDate
+import kotlin.math.ceil
 
 @Service
 class RouteService(
@@ -24,19 +29,24 @@ class RouteService(
     private val rideRequestRepository: RideRequestRepository,
     private val userRepository: UserRepository,
     private val rideService: RideService,
+    private val routingService: RoutingService,
     private val clock: Clock
 ) {
 
     @Transactional
     fun create(driverId: Long, dto: CreateRouteDto): RouteResponseDto {
+        val origin = dto.origin.toModel()
+        val destination = dto.destination.toModel()
         val route = routeRepository.save(
             Route(
                 driver = userRepository.getReferenceById(driverId),
-                origin = dto.origin.toModel(),
-                destination = dto.destination.toModel(),
+                origin = origin,
+                destination = destination,
                 weekdays = dto.weekdays.toMutableSet(),
                 outboundTime = dto.outboundTime,
                 returnTime = dto.returnTime,
+                outboundPath = routingService.route(origin, destination),
+                returnPath = dto.returnTime?.let { routingService.route(destination, origin) },
                 maxDetourMeters = dto.maxDetourMeters,
                 seats = dto.seats,
                 priceCents = dto.priceCents
@@ -44,6 +54,18 @@ class RouteService(
         )
         rideService.generateRides(route)
         return RouteResponseDto.from(route)
+    }
+
+    /** Distância, tempo e trajeto da ida, para o motorista conferir antes de publicar. */
+    fun preview(origin: Location, destination: Location): RoutePreviewDto {
+        val path = routingService.route(origin, destination)
+        val distance = path?.distanceMeters ?: Geo.roadDistanceMeters(origin, destination)
+        return RoutePreviewDto(
+            distanceMeters = distance,
+            durationMinutes = path?.let { ceil(it.durationSeconds / 60.0).toLong() } ?: Geo.travelMinutes(distance),
+            path = path?.polyline ?: Polyline.encode(listOf(origin, destination)),
+            followsRoads = path != null
+        )
     }
 
     @Transactional(readOnly = true)

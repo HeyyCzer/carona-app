@@ -89,7 +89,7 @@ class RideService(
 
     /**
      * Caronas do dia que passam perto da origem e do destino do passageiro, no sentido certo.
-     * "Perto" é o desvio máximo que o motorista aceita, medido até a linha reta do trajeto.
+     * "Perto" é o desvio máximo que o motorista aceita, medido até o trajeto pelas ruas (ou a linha reta, sem OSRM).
      */
     @Transactional(readOnly = true)
     fun search(userId: Long, origin: Location, destination: Location, date: LocalDate?): List<RideSearchResultDto> {
@@ -99,8 +99,9 @@ class RideService(
             .asSequence()
             .filter { it.driver.id != userId && !hasDeparted(it) }
             .mapNotNull { ride ->
-                val pickup = Geo.project(origin, ride.from, ride.to)
-                val dropoff = Geo.project(destination, ride.from, ride.to)
+                val path = ride.pathPoints()
+                val pickup = Geo.project(origin, path)
+                val dropoff = Geo.project(destination, path)
                 val maxDistance = ride.route.maxDetourMeters
                 if (pickup.distanceMeters > maxDistance || dropoff.distanceMeters > maxDistance) return@mapNotNull null
                 if (pickup.fraction > dropoff.fraction) return@mapNotNull null
@@ -112,9 +113,7 @@ class RideService(
                     ride = RideResponseDto.from(ride, seatsAvailable),
                     distanceFromYouMeters = pickup.distanceMeters.roundToInt(),
                     pickupPoint = LocationDto.from(pickup.point),
-                    estimatedPickupTime = ride.departureTime.plusMinutes(
-                        Geo.travelMinutes(Geo.roadDistanceMeters(ride.from, pickup.point))
-                    )
+                    estimatedPickupTime = ride.departureTime.plusMinutes(ride.travelMinutes(pickup.fraction))
                 )
             }
             .toList()
