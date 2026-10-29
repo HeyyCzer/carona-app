@@ -17,6 +17,7 @@ import me.rafaelpereira.caronaapp.repositories.RideRepository
 import me.rafaelpereira.caronaapp.repositories.RideRequestRepository
 import me.rafaelpereira.caronaapp.repositories.RouteRepository
 import me.rafaelpereira.caronaapp.utils.Geo
+import org.slf4j.LoggerFactory
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.Scheduled
@@ -37,6 +38,8 @@ class RideService(
     private val bookingRepository: BookingRepository,
     private val clock: Clock
 ) {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     /**
      * Cria as caronas da rota para os próximos [GENERATION_DAYS] dias, ignorando as que já existem,
@@ -94,6 +97,10 @@ class RideService(
     @Transactional(readOnly = true)
     fun search(userId: Long, origin: Location, destination: Location, date: LocalDate?): List<RideSearchResultDto> {
         val searchDate = date ?: LocalDate.now(clock)
+        log.debug(
+            "Busca do usuário {} em {}: origem ({}, {}) → destino ({}, {})",
+            userId, searchDate, origin.latitude, origin.longitude, destination.latitude, destination.longitude
+        )
 
         return rideRepository.findByDateAndStatusOrderByDepartureTimeAsc(searchDate, RideStatus.SCHEDULED)
             .asSequence()
@@ -103,11 +110,21 @@ class RideService(
                 val pickup = Geo.project(origin, path)
                 val dropoff = Geo.project(destination, path)
                 val maxDistance = ride.route.maxDetourMeters
-                if (pickup.distanceMeters > maxDistance || dropoff.distanceMeters > maxDistance) return@mapNotNull null
-                if (pickup.fraction > dropoff.fraction) return@mapNotNull null
-
                 val seatsAvailable = seatsAvailable(ride)
-                if (seatsAvailable <= 0) return@mapNotNull null
+                val rejection = when {
+                    pickup.distanceMeters > maxDistance -> "origem longe demais"
+                    dropoff.distanceMeters > maxDistance -> "destino longe demais"
+                    pickup.fraction > dropoff.fraction -> "sentido contrário"
+                    seatsAvailable <= 0 -> "sem vagas"
+                    else -> null
+                }
+                log.debug(
+                    "  carona {} ({} {}): origem a {} m, destino a {} m, limite {} m, embarque em {}% do trajeto → {}",
+                    ride.id, ride.direction, ride.departureTime,
+                    pickup.distanceMeters.roundToInt(), dropoff.distanceMeters.roundToInt(), maxDistance,
+                    (pickup.fraction * 100).roundToInt(), rejection?.let { "descartada: $it" } ?: "OK"
+                )
+                if (rejection != null) return@mapNotNull null
 
                 RideSearchResultDto(
                     ride = RideResponseDto.from(ride, seatsAvailable),
