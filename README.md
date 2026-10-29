@@ -38,6 +38,16 @@ O app procura o backend em:
   flutter run --dart-define=API_URL=http://192.168.0.10:8080
   ```
 
+- **Backend publicado:** copie `mobile/.env.example` para `mobile/.env`, coloque a URL em `API_URL` e passe o arquivo para o `run` ou o `build`:
+
+  ```bash
+  flutter run --dart-define-from-file=.env
+  flutter build apk --dart-define-from-file=.env
+  flutter build ipa --dart-define-from-file=.env
+  ```
+
+  No VS Code, a configuração **mobile (.env)** do `launch.json` já faz isso.
+
 Para testar sozinho, crie duas contas: uma publica uma rota em **Dirigir › Nova rota** e a outra busca a carona em **Buscar**.
 
 ## Organização do app (`mobile/lib`)

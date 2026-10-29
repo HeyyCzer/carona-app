@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 
 /// Endereço do backend. Pode ser sobrescrito com
+/// `flutter run --dart-define-from-file=.env` (veja `.env.example`) ou
 /// `flutter run --dart-define=API_URL=http://192.168.0.10:8080`.
 class AppConfig {
   static const _fromEnv = String.fromEnvironment('API_URL');
