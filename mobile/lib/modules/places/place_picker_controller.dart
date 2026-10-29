@@ -49,7 +49,12 @@ class PlacePickerController extends GetxController {
     }
     searching.value = true;
     try {
-      results.assignAll(await _geocoding.search(term));
+      final found = await _geocoding.search(term, near: places.here.value ?? places.origin.value);
+      // Mais perto primeiro: nomes como "Village Damha" existem em várias cidades.
+      if (places.here.value != null) {
+        found.sort((a, b) => places.distanceFromHere(a)!.compareTo(places.distanceFromHere(b)!));
+      }
+      results.assignAll(found);
     } catch (_) {
       results.clear();
       showMessage('Não foi possível buscar endereços agora.', error: true);
@@ -61,13 +66,21 @@ class PlacePickerController extends GetxController {
 
   void choose(Place place) => Get.back(result: place);
 
+  Future<void> useCurrentLocation() async {
+    try {
+      choose(await places.locate());
+    } on LocationUnavailable catch (e) {
+      showMessage(e.message, error: true);
+    }
+  }
+
   /// Confirma o ponto no centro do mapa, buscando um nome para ele.
   Future<void> confirmMapCenter() async {
     final center = mapController.camera.center;
     confirming.value = true;
-    final label = await _geocoding.reverse(center.latitude, center.longitude);
+    final place = await _geocoding.reverse(center.latitude, center.longitude);
     confirming.value = false;
-    choose(Place(label: label ?? 'Ponto no mapa', latitude: center.latitude, longitude: center.longitude));
+    choose(place ?? Place(label: 'Ponto no mapa', latitude: center.latitude, longitude: center.longitude));
   }
 
   @override

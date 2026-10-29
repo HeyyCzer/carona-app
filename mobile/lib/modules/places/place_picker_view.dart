@@ -7,6 +7,7 @@ import '../../api/models.dart';
 import '../../services/places_service.dart';
 import '../../theme.dart';
 import '../../ui/ui.dart';
+import '../../utils/format.dart';
 import 'place_picker_controller.dart';
 
 class PlacePickerView extends GetView<PlacePickerController> {
@@ -66,6 +67,14 @@ class PlacePickerView extends GetView<PlacePickerController> {
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
               children: [
                 _tile(
+                  icon: Icons.my_location_rounded,
+                  title: 'Usar minha localização',
+                  subtitle: controller.places.locating.value
+                      ? 'Buscando sua localização...'
+                      : controller.places.here.value?.label ?? 'Pelo GPS do aparelho',
+                  onTap: controller.useCurrentLocation,
+                ),
+                _tile(
                   icon: Icons.map_outlined,
                   title: 'Escolher no mapa',
                   subtitle: 'Arraste o mapa até o ponto exato',
@@ -98,7 +107,14 @@ class PlacePickerView extends GetView<PlacePickerController> {
       );
 
   Widget _placeTile(Place place, {IconData icon = Icons.place_outlined}) =>
-      _tile(icon: icon, title: place.label, onTap: () => controller.choose(place));
+      _tile(icon: icon, title: place.label, subtitle: _placeDetail(place), onTap: () => controller.choose(place));
+
+  /// "São José do Rio Preto - SP · 2,3 km de você", com o que estiver disponível.
+  String? _placeDetail(Place place) {
+    final distance = controller.places.distanceFromHere(place);
+    final parts = [place.detail, if (distance != null) '${formatDistance(distance)} de você'].whereType<String>();
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
 
   Widget _tile({required IconData icon, required String title, String? subtitle, required VoidCallback onTap}) {
     return Padding(

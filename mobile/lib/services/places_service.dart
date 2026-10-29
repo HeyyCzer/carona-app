@@ -1,14 +1,25 @@
 import 'dart:convert';
 
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../api/geocoding.dart';
 import '../api/models.dart';
 
-/// Origem/destino da busca do passageiro e locais usados recentemente, salvos no aparelho.
+/// Não foi possível obter a localização do aparelho; [message] pode ser mostrada ao usuário.
+class LocationUnavailable implements Exception {
+  final String message;
+
+  const LocationUnavailable(this.message);
+
+  @override
+  String toString() => message;
+}
+
+/// Origem/destino da busca do passageiro, posição atual do aparelho e locais usados recentemente.
+/// A origem começa na posição atual e o destino começa vazio; só os recentes ficam salvos no aparelho.
 class PlacesService extends GetxService {
-  static const _originKey = 'places.origin';
-  static const _destinationKey = 'places.destination';
   static const _recentKey = 'places.recent';
   static const _maxRecent = 8;
 
@@ -18,50 +29,92 @@ class PlacesService extends GetxService {
   ];
 
   final SharedPreferences prefs;
+  final Geocoding geocoding;
 
   final origin = Rxn<Place>();
   final destination = Rxn<Place>();
   final recent = <Place>[].obs;
 
-  PlacesService(this.prefs);
+  /// Última posição conhecida do aparelho (com nome do endereço, se o Nominatim respondeu).
+  final here = Rxn<Place>();
+  final locating = false.obs;
+
+  PlacesService(this.prefs, this.geocoding);
 
   @override
   void onInit() {
     super.onInit();
-    origin.value = _read(_originKey);
-    destination.value = _read(_destinationKey);
     final raw = prefs.getString(_recentKey);
     if (raw != null) {
       recent.assignAll((jsonDecode(raw) as List).map((e) => Place.fromJson(e)));
     }
+    _startAtCurrentLocation();
   }
 
-  Place? _read(String key) {
-    final raw = prefs.getString(key);
-    return raw == null ? null : Place.fromJson(jsonDecode(raw));
+  Future<void> _startAtCurrentLocation() async {
+    try {
+      final place = await locate();
+      if (origin.value == null) origin.value = place;
+    } on LocationUnavailable {
+      // Sem permissão ou GPS desligado: o usuário escolhe a origem na mão.
+    }
+  }
+
+  /// Lê a posição atual do aparelho, pedindo permissão se preciso, e busca um nome para ela.
+  Future<Place> locate() async {
+    locating.value = true;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw const LocationUnavailable('Ative a localização do aparelho.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        throw const LocationUnavailable('Permita o acesso à localização nos ajustes do aparelho.');
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(timeLimit: Duration(seconds: 15)),
+      );
+      final place = await geocoding.reverse(position.latitude, position.longitude) ??
+          Place(label: 'Minha localização', latitude: position.latitude, longitude: position.longitude);
+      here.value = place;
+      return place;
+    } on LocationUnavailable {
+      rethrow;
+    } catch (_) {
+      throw const LocationUnavailable('Não foi possível obter sua localização agora.');
+    } finally {
+      locating.value = false;
+    }
+  }
+
+  /// Distância em linha reta da posição atual até [place], ou null se a posição ainda não é conhecida.
+  int? distanceFromHere(Place place) {
+    final current = here.value;
+    if (current == null) return null;
+    return Geolocator.distanceBetween(current.latitude, current.longitude, place.latitude, place.longitude).round();
   }
 
   void setOrigin(Place place) {
     origin.value = place;
-    prefs.setString(_originKey, jsonEncode(place.toJson()));
     remember(place);
   }
 
   void setDestination(Place place) {
     destination.value = place;
-    prefs.setString(_destinationKey, jsonEncode(place.toJson()));
     remember(place);
   }
 
   void swap() {
     final o = origin.value, d = destination.value;
     if (o == null || d == null) return;
-    setOrigin(d);
-    setDestination(o);
+    origin.value = d;
+    destination.value = o;
   }
 
   void remember(Place place) {
     recent.assignAll([place, ...recent.where((p) => p != place)].take(_maxRecent));
-    prefs.setString(_recentKey, jsonEncode(recent.map((p) => p.toJson()).toList()));
+    prefs.setString(_recentKey, jsonEncode(recent.map((p) => p.toStorageJson()).toList()));
   }
 }

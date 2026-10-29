@@ -5,6 +5,7 @@ import '../../api/models.dart';
 import '../../app/routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/places_service.dart';
+import '../../ui/ui.dart';
 import '../../utils/format.dart';
 import '../places/place_picker_controller.dart';
 import 'ride_detail_controller.dart';
@@ -42,6 +43,14 @@ class RideSearchController extends GetxController {
       error.value = errorMessage(e);
     } finally {
       loading.value = false;
+    }
+  }
+
+  Future<void> useCurrentLocation() async {
+    try {
+      places.origin.value = await places.locate();
+    } on LocationUnavailable catch (e) {
+      showMessage(e.message, error: true);
     }
   }
 

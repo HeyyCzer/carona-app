@@ -140,17 +140,24 @@ class Place {
   final double latitude;
   final double longitude;
 
-  const Place({required this.label, required this.latitude, required this.longitude});
+  /// Cidade e estado ("São José do Rio Preto - SP"), só para exibir. Não vai para o backend.
+  final String? detail;
+
+  const Place({required this.label, required this.latitude, required this.longitude, this.detail});
 
   factory Place.fromJson(Map<String, dynamic> json) => Place(
         label: json['label'],
         latitude: (json['latitude'] as num).toDouble(),
         longitude: (json['longitude'] as num).toDouble(),
+        detail: json['detail'],
       );
 
   Map<String, dynamic> toJson() => {'label': label, 'latitude': latitude, 'longitude': longitude};
 
-  Place withLabel(String label) => Place(label: label, latitude: latitude, longitude: longitude);
+  /// Como [toJson], mas com [detail], para guardar no aparelho.
+  Map<String, dynamic> toStorageJson() => {...toJson(), 'detail': ?detail};
+
+  Place withLabel(String label) => Place(label: label, latitude: latitude, longitude: longitude, detail: detail);
 
   @override
   bool operator ==(Object other) =>

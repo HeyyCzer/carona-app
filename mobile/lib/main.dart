@@ -22,9 +22,9 @@ Future<void> main() async {
 
   // Dependências globais, disponíveis via Get.find() em qualquer controller.
   final api = Get.put(CaronaApi(ApiClient(AppConfig.apiUrl)), permanent: true);
-  Get.put(Geocoding(), permanent: true);
+  final geocoding = Get.put(Geocoding(), permanent: true);
   final auth = Get.put(AuthService(api, prefs), permanent: true);
-  Get.put(PlacesService(prefs), permanent: true);
+  Get.put(PlacesService(prefs, geocoding), permanent: true);
   Get.put(MessagesService(prefs), permanent: true);
   Get.put(DrivenRidesService(api, prefs), permanent: true);
 

@@ -15,28 +15,25 @@ class Geocoding {
   static const _host = 'nominatim.openstreetmap.org';
   static const _headers = {'User-Agent': AppConfig.userAgent, 'Accept-Language': 'pt-BR'};
 
-  Future<List<Place>> search(String query) async {
+  /// Com [near], prefere resultados em volta desse ponto (sem excluir os de fora).
+  Future<List<Place>> search(String query, {Place? near}) async {
     final uri = Uri.https(_host, '/search', {
       'q': query,
       'format': 'jsonv2',
       'limit': '8',
       'countrycodes': 'br',
       'addressdetails': '1',
+      if (near != null) 'viewbox': _viewbox(near),
     });
     final response = await _http.get(uri, headers: _headers).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) return const [];
 
     final results = jsonDecode(utf8.decode(response.bodyBytes)) as List;
-    return results.map((r) {
-      return Place(
-        label: _shortLabel(r),
-        latitude: double.parse(r['lat']),
-        longitude: double.parse(r['lon']),
-      );
-    }).toList();
+    return results.map((r) => _place(r, double.parse(r['lat']), double.parse(r['lon']))).toList();
   }
 
-  Future<String?> reverse(double latitude, double longitude) async {
+  /// Nome do endereço em [latitude], [longitude], ou null se o Nominatim falhar.
+  Future<Place?> reverse(double latitude, double longitude) async {
     final uri = Uri.https(_host, '/reverse', {
       'lat': '$latitude',
       'lon': '$longitude',
@@ -47,10 +44,35 @@ class Geocoding {
     try {
       final response = await _http.get(uri, headers: _headers).timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return null;
-      return _shortLabel(jsonDecode(utf8.decode(response.bodyBytes)));
+      return _place(jsonDecode(utf8.decode(response.bodyBytes)), latitude, longitude);
     } catch (_) {
       return null;
     }
+  }
+
+  /// Retângulo de ~30 km em volta de [center], no formato do Nominatim (lng1,lat1,lng2,lat2).
+  static String _viewbox(Place center) {
+    const delta = 0.3;
+    return [
+      center.longitude - delta,
+      center.latitude + delta,
+      center.longitude + delta,
+      center.latitude - delta,
+    ].join(',');
+  }
+
+  static Place _place(Map<String, dynamic> result, double latitude, double longitude) =>
+      Place(label: _shortLabel(result), latitude: latitude, longitude: longitude, detail: _cityLabel(result));
+
+  /// "São José do Rio Preto - SP", para diferenciar lugares com o mesmo nome em cidades diferentes.
+  static String? _cityLabel(Map<String, dynamic> result) {
+    final address = result['address'] as Map<String, dynamic>?;
+    if (address == null) return null;
+    final city = (address['city'] ?? address['town'] ?? address['village'] ?? address['municipality']) as String?;
+    // ISO3166-2-lvl4 vem como "BR-SP".
+    final state = (address['ISO3166-2-lvl4'] as String?)?.split('-').last ?? address['state'] as String?;
+    final parts = [city, state].whereType<String>();
+    return parts.isEmpty ? null : parts.join(' - ');
   }
 
   /// "Rua X, 123 · Bairro" em vez do display_name completo, que é enorme. O backend aceita até 120 caracteres.

@@ -75,7 +75,22 @@ class RideSearchView extends GetView<RideSearchController> {
         final destination = controller.places.destination.value;
         return Column(
           children: [
-            _placeRow('Saindo de', origin?.label, const RouteDot(), controller.pickOrigin),
+            _placeRow(
+              'Saindo de',
+              origin?.label,
+              const RouteDot(),
+              controller.pickOrigin,
+              trailing: controller.places.locating.value
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : IconButton(
+                      tooltip: 'Usar minha localização',
+                      icon: const Icon(Icons.my_location_rounded, color: AppColors.primary),
+                      onPressed: controller.useCurrentLocation,
+                    ),
+            ),
             const Divider(height: 1, color: AppColors.border),
             _placeRow(
               'Indo para',
