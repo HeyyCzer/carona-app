@@ -8,20 +8,25 @@ import '../theme.dart';
 
 LatLng toLatLng(Place place) => LatLng(place.latitude, place.longitude);
 
-/// Mapa do OpenStreetMap com o trajeto (linha reta, como o backend calcula)
-/// e um destaque opcional para o ponto de embarque.
+/// Mapa do OpenStreetMap com o trajeto e um destaque opcional para o ponto de embarque.
+/// Sem [path], o trajeto é desenhado como linha reta entre [from] e [to].
 class RouteMap extends StatelessWidget {
   final Place? from;
   final Place? to;
+  final List<LatLng>? path;
   final Place? pickup;
   final String? pickupLabel;
   final bool interactive;
 
-  const RouteMap({super.key, this.from, this.to, this.pickup, this.pickupLabel, this.interactive = true});
+  const RouteMap(
+      {super.key, this.from, this.to, this.path, this.pickup, this.pickupLabel, this.interactive = true});
 
   @override
   Widget build(BuildContext context) {
-    final points = [from, to, pickup].whereType<Place>().map(toLatLng).toList();
+    final line = path != null && path!.length >= 2
+        ? path!
+        : [if (from != null && to != null) ...[toLatLng(from!), toLatLng(to!)]];
+    final points = [...line, ...[from, to, pickup].whereType<Place>().map(toLatLng)];
     final camera = points.length >= 2
         ? CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.fromLTRB(48, 96, 48, 48))
         : null;
@@ -37,9 +42,9 @@ class RouteMap extends StatelessWidget {
       ),
       children: [
         osmTileLayer(),
-        if (from != null && to != null)
+        if (line.isNotEmpty)
           PolylineLayer(polylines: [
-            Polyline(points: [toLatLng(from!), toLatLng(to!)], color: AppColors.primary, strokeWidth: 5),
+            Polyline(points: line, color: AppColors.primary, strokeWidth: 5),
           ]),
         MarkerLayer(markers: [
           if (from != null)

@@ -1,5 +1,9 @@
 // Modelos espelhando os DTOs do backend (controllers/dto).
 
+import 'package:latlong2/latlong.dart';
+
+import '../utils/polyline.dart';
+
 /// Hora do dia sem data, serializada como "HH:mm" (o backend responde "HH:mm:ss").
 class ClockTime implements Comparable<ClockTime> {
   final int hour;
@@ -164,6 +168,10 @@ class Ride {
   final ClockTime departureTime;
   final ClockTime estimatedArrivalTime;
   final RideStatus status;
+  final int distanceMeters;
+
+  /// Trajeto pelas ruas (ou a linha reta, se o backend não conseguiu calcular).
+  final List<LatLng> path;
   final Place from;
   final Place to;
   final Person driver;
@@ -179,6 +187,8 @@ class Ride {
     required this.departureTime,
     required this.estimatedArrivalTime,
     required this.status,
+    required this.distanceMeters,
+    required this.path,
     required this.from,
     required this.to,
     required this.driver,
@@ -199,6 +209,8 @@ class Ride {
         departureTime: ClockTime.parse(json['departureTime']),
         estimatedArrivalTime: ClockTime.parse(json['estimatedArrivalTime']),
         status: _enumByName(RideStatus.values, json['status']),
+        distanceMeters: json['distanceMeters'],
+        path: decodePolyline(json['path']),
         from: Place.fromJson(json['from']),
         to: Place.fromJson(json['to']),
         driver: Person.fromJson(json['driver']),
@@ -337,6 +349,30 @@ class DriverRoute {
         seats: json['seats'],
         priceCents: json['priceCents'],
         active: json['active'],
+      );
+}
+
+/// Distância, tempo e trajeto da ida antes de publicar a rota.
+class RoutePreview {
+  final int distanceMeters;
+  final int durationMinutes;
+  final List<LatLng> path;
+
+  /// Falso quando o backend não conseguiu o trajeto pelas ruas e [path] é a linha reta.
+  final bool followsRoads;
+
+  const RoutePreview({
+    required this.distanceMeters,
+    required this.durationMinutes,
+    required this.path,
+    required this.followsRoads,
+  });
+
+  factory RoutePreview.fromJson(Map<String, dynamic> json) => RoutePreview(
+        distanceMeters: json['distanceMeters'],
+        durationMinutes: json['durationMinutes'],
+        path: decodePolyline(json['path']),
+        followsRoads: json['followsRoads'],
       );
 }
 

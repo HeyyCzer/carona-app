@@ -28,17 +28,36 @@ class NewRouteController extends GetxController {
   final priceCents = 600.obs;
   final saving = false.obs;
 
+  /// Trajeto da ida calculado pelo backend; enquanto não chega, vale a estimativa em linha reta.
+  final preview = Rxn<RoutePreview>();
+
   @override
   void onInit() {
     super.onInit();
     // Começa com o trajeto da última busca, que costuma ser o mesmo do motorista.
     origin.value = _places.origin.value;
     destination.value = _places.destination.value;
+    everAll([origin, destination], (_) => _loadPreview());
+    _loadPreview();
+  }
+
+  Future<void> _loadPreview() async {
+    final o = origin.value, d = destination.value;
+    preview.value = null;
+    if (o == null || d == null || o == d) return;
+    try {
+      final result = await _api.previewRoute(o, d);
+      // Ignora a resposta se o motorista trocou a origem ou o destino enquanto ela vinha.
+      if (origin.value == o && destination.value == d) preview.value = result;
+    } catch (_) {
+      // Sem prévia, a tela segue com a estimativa em linha reta.
+    }
   }
 
   int? get roadDistance {
     final o = origin.value, d = destination.value;
-    return o == null || d == null ? null : GeoEstimate.roadDistanceMeters(o, d);
+    if (o == null || d == null) return null;
+    return preview.value?.distanceMeters ?? GeoEstimate.roadDistanceMeters(o, d);
   }
 
   int get detourMinutes => GeoEstimate.travelMinutes(detourMeters.value);

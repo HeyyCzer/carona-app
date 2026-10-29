@@ -26,6 +26,7 @@ class RideDetailView extends GetView<RideDetailController> {
                 RouteMap(
                   from: ride.from,
                   to: ride.to,
+                  path: ride.path,
                   pickup: result.pickupPoint,
                   pickupLabel: pickupMinutes <= 0 ? 'Saída do motorista' : '$pickupMinutes min de carro',
                 ),

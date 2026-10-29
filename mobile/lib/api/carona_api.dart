@@ -55,6 +55,14 @@ class CaronaApi {
 
   // Motorista
 
+  Future<RoutePreview> previewRoute(Place origin, Place destination) async =>
+      RoutePreview.fromJson(await client.get('/routes/preview', query: {
+        'originLat': '${origin.latitude}',
+        'originLng': '${origin.longitude}',
+        'destinationLat': '${destination.latitude}',
+        'destinationLng': '${destination.longitude}',
+      }));
+
   Future<DriverRoute> createRoute(NewRoute route) async =>
       DriverRoute.fromJson(await client.post('/routes', body: route.toJson()));
 

@@ -86,6 +86,7 @@ class MyRidesController extends GetxController {
         pickup: pickup,
         from: item.ride.from,
         to: item.ride.to,
+        path: item.ride.path,
         subtitle: '${relativeDayLong(item.ride.date)} · ${item.ride.driver.firstName} sai às ${item.ride.departureTime}',
       ),
     );

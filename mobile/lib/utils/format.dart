@@ -57,7 +57,7 @@ String initials(String name) {
   return (parts.first[0] + parts.last[0]).toUpperCase();
 }
 
-/// Mesmas estimativas do backend (utils/Geo.kt): linha reta × 1,3 e 25 km/h de média.
+/// Mesmas estimativas que o backend usa sem o OSRM (utils/Geo.kt): linha reta × 1,3 e 25 km/h de média.
 class GeoEstimate {
   static const _earthRadius = 6371000.0;
   static const _roadFactor = 1.3;

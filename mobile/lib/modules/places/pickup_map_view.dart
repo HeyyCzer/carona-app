@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../api/models.dart';
 import '../../theme.dart';
@@ -8,9 +9,10 @@ class PickupMapArgs {
   final Place pickup;
   final Place? from;
   final Place? to;
+  final List<LatLng>? path;
   final String? subtitle;
 
-  const PickupMapArgs({required this.pickup, this.from, this.to, this.subtitle});
+  const PickupMapArgs({required this.pickup, this.from, this.to, this.path, this.subtitle});
 }
 
 /// "Ver ponto": mapa em tela cheia com o ponto de embarque.
@@ -24,7 +26,7 @@ class PickupMapView extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          RouteMap(from: args.from, to: args.to, pickup: args.pickup),
+          RouteMap(from: args.from, to: args.to, path: args.path, pickup: args.pickup),
           const SafeArea(child: Padding(padding: EdgeInsets.all(20), child: BackSquareButton())),
           Positioned(
             left: 20,
