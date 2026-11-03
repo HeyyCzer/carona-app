@@ -466,3 +466,41 @@ class Earnings {
         rides: (json['rides'] as List).map((r) => EarningsRide.fromJson(r)).toList(),
       );
 }
+
+/// Mensagem direta, como vem de `/messages` e do WebSocket `/ws/messages`.
+class Message {
+  final int id;
+  final Person from;
+  final Person to;
+  final String content;
+  final DateTime createdAt;
+
+  const Message({
+    required this.id,
+    required this.from,
+    required this.to,
+    required this.content,
+    required this.createdAt,
+  });
+
+  factory Message.fromJson(Map<String, dynamic> json) => Message(
+        id: json['id'],
+        from: Person.fromJson(json['from']),
+        to: Person.fromJson(json['to']),
+        content: json['content'],
+        createdAt: DateTime.parse(json['createdAt']).toLocal(),
+      );
+}
+
+/// Item da lista de conversas: a outra pessoa e a última mensagem trocada.
+class ConversationSummary {
+  final Person person;
+  final Message lastMessage;
+
+  const ConversationSummary({required this.person, required this.lastMessage});
+
+  factory ConversationSummary.fromJson(Map<String, dynamic> json) => ConversationSummary(
+        person: Person.fromJson(json['person']),
+        lastMessage: Message.fromJson(json['lastMessage']),
+      );
+}

@@ -95,4 +95,15 @@ class CaronaApi {
           'to': to == null ? null : formatIsoDate(to),
         }),
       );
+
+  // Mensagens (as novas chegam em tempo real pelo WebSocket, ver MessagesService)
+
+  Future<List<ConversationSummary>> conversations() async =>
+      ((await client.get('/messages')) as List).map((e) => ConversationSummary.fromJson(e)).toList();
+
+  Future<List<Message>> messagesWith(int userId) async =>
+      ((await client.get('/messages/$userId')) as List).map((e) => Message.fromJson(e)).toList();
+
+  Future<Message> sendMessage(int userId, String content) async =>
+      Message.fromJson(await client.post('/messages/$userId', body: {'content': content}));
 }

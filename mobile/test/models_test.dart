@@ -56,6 +56,8 @@ void main() {
         'departureTime': '07:00:00',
         'estimatedArrivalTime': '07:11:00',
         'status': 'SCHEDULED',
+        'distanceMeters': 4360,
+        'path': '',
         'from': {'label': 'Casa', 'latitude': -20.8113, 'longitude': -49.3758},
         'to': {'label': 'Unirp - Unidade III', 'latitude': -20.785, 'longitude': -49.36},
         'driver': {'id': 3, 'name': 'Cauanny Silva'},

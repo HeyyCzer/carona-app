@@ -15,6 +15,9 @@ class AppConfig {
     return 'http://localhost:8080';
   }
 
+  /// Mesmo endereço da API com ws:// (ou wss://), para as mensagens em tempo real.
+  static String get wsUrl => apiUrl.replaceFirst(RegExp('^http'), 'ws');
+
   /// User-Agent exigido pelos serviços do OpenStreetMap (tiles e Nominatim).
   static const userAgent = 'me.rafaelpereira.carona_app';
 }

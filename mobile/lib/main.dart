@@ -25,7 +25,7 @@ Future<void> main() async {
   final geocoding = Get.put(Geocoding(), permanent: true);
   final auth = Get.put(AuthService(api, prefs), permanent: true);
   Get.put(PlacesService(prefs, geocoding), permanent: true);
-  Get.put(MessagesService(prefs), permanent: true);
+  Get.put(MessagesService(api), permanent: true);
   Get.put(DrivenRidesService(api, prefs), permanent: true);
 
   runApp(CaronaApp(initialRoute: auth.isLoggedIn ? Routes.home : Routes.login));

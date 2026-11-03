@@ -38,6 +38,8 @@ class SecurityConfig(
                 authorize(HttpMethod.POST, "/register", permitAll)
                 authorize(HttpMethod.POST, "/login", permitAll)
                 authorize("/error", permitAll)
+                // O handshake do WebSocket valida o token no JwtHandshakeInterceptor
+                authorize("/ws/**", permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2ResourceServer {

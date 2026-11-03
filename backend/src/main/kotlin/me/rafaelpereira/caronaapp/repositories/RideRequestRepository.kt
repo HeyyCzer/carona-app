@@ -11,6 +11,8 @@ interface RideRequestRepository : JpaRepository<RideRequest, Long> {
 
     fun existsByRideIdAndPassengerIdAndStatus(rideId: Long, passengerId: Long, status: RideRequestStatus): Boolean
 
+    fun existsByPassengerIdAndRideRouteDriverId(passengerId: Long, driverId: Long): Boolean
+
     fun findByPassengerIdOrderByCreatedAtDesc(passengerId: Long): List<RideRequest>
 
     fun findByRideRouteDriverIdAndStatusOrderByCreatedAtAsc(driverId: Long, status: RideRequestStatus): List<RideRequest>

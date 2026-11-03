@@ -36,19 +36,13 @@ class ChatView extends GetView<ChatController> {
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            color: AppColors.primarySoft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Text(
-              'Por enquanto as mensagens ficam salvas só neste aparelho.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
-          ),
           Expanded(
             child: Obx(() {
               final messages = controller.messages.reversed.toList();
+              if (messages.isEmpty && controller.loading) return const LoadingView();
+              if (messages.isEmpty && controller.error.value != null) {
+                return MessageView.error(controller.error.value!, controller.load);
+              }
               if (messages.isEmpty) {
                 return MessageView(
                   icon: Icons.waving_hand_outlined,
@@ -103,14 +97,16 @@ class ChatView extends GetView<ChatController> {
                       ),
                     ),
                   ),
-                  Obx(() => IconButton(
-                        tooltip: 'Enviar',
-                        onPressed: controller.canSend.value ? controller.send : null,
-                        icon: Icon(
-                          Icons.send_rounded,
-                          color: controller.canSend.value ? AppColors.primary : AppColors.textHint,
-                        ),
-                      )),
+                  Obx(() {
+                    final enabled = controller.canSend.value && !controller.sending.value;
+                    return IconButton(
+                      tooltip: 'Enviar',
+                      onPressed: enabled ? controller.send : null,
+                      icon: controller.sending.value
+                          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Icon(Icons.send_rounded, color: enabled ? AppColors.primary : AppColors.textHint),
+                    );
+                  }),
                 ],
               ),
             ),

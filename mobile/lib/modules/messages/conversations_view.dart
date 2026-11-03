@@ -15,67 +15,75 @@ class ConversationsView extends GetView<ConversationsController> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      children: [
-        const Row(
-          children: [
-            ModePill(icon: Icons.chat_bubble_outline_rounded, label: 'Mensagens'),
-            Spacer(),
-            SquareIconButton(
-              icon: Icons.person_outline_rounded,
-              background: AppColors.surfaceMuted,
-              tooltip: 'Perfil',
-              onPressed: showProfileSheet,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: controller.search,
-          decoration: InputDecoration(
-            hintText: 'Buscar conversas...',
-            prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
-            fillColor: AppColors.primarySoft,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(999), borderSide: BorderSide.none),
-            enabledBorder:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(999), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(999),
-              borderSide: const BorderSide(color: AppColors.primary),
+    return RefreshIndicator(
+      onRefresh: controller.reload,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        children: [
+          const Row(
+            children: [
+              ModePill(icon: Icons.chat_bubble_outline_rounded, label: 'Mensagens'),
+              Spacer(),
+              SquareIconButton(
+                icon: Icons.person_outline_rounded,
+                background: AppColors.surfaceMuted,
+                tooltip: 'Perfil',
+                onPressed: showProfileSheet,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: controller.search,
+            decoration: InputDecoration(
+              hintText: 'Buscar conversas...',
+              prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
+              fillColor: AppColors.primarySoft,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(999), borderSide: BorderSide.none),
+              enabledBorder:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(999), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Obx(() {
-          final list = controller.conversations;
-          if (!controller.hasAny) {
-            return const AppCard(
-              child: MessageView(
-                icon: Icons.forum_outlined,
-                title: 'Nenhuma conversa ainda',
-                subtitle: 'Motoristas e passageiros das suas caronas aparecem aqui.',
-              ),
-            );
-          }
-          if (list.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('Ninguém encontrado com esse nome.', style: mutedStyle, textAlign: TextAlign.center),
-            );
-          }
-          return Column(
-            children: [
-              for (final c in list)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _ConversationTile(conversation: c, onTap: () => controller.open(c)),
+          const SizedBox(height: 16),
+          Obx(() {
+            final list = controller.conversations;
+            if (!controller.hasAny && controller.loading) return const LoadingView();
+            if (!controller.hasAny && controller.error != null) {
+              return AppCard(child: MessageView.error(controller.error!, controller.reload));
+            }
+            if (!controller.hasAny) {
+              return const AppCard(
+                child: MessageView(
+                  icon: Icons.forum_outlined,
+                  title: 'Nenhuma conversa ainda',
+                  subtitle: 'Motoristas e passageiros das suas caronas aparecem aqui.',
                 ),
-            ],
-          );
-        }),
-      ],
+              );
+            }
+            if (list.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Ninguém encontrado com esse nome.', style: mutedStyle, textAlign: TextAlign.center),
+              );
+            }
+            return Column(
+              children: [
+                for (final c in list)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _ConversationTile(conversation: c, onTap: () => controller.open(c)),
+                  ),
+              ],
+            );
+          }),
+        ],
+      ),
     );
   }
 }
