@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'app_logo.dart';
 
 /// Estrutura comum das telas de login/cadastro: conteúdo centralizado e rodapé com link.
 class AuthScaffold extends StatelessWidget {
@@ -36,6 +37,8 @@ class AuthScaffold extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Spacer(flex: 2),
+                    const AppLogo(size: 64),
+                    const SizedBox(height: 28),
                     Text(title, style: headlineStyle),
                     const SizedBox(height: 18),
                     Text(subtitle, style: const TextStyle(fontSize: 15, color: AppColors.textMuted, height: 1.4)),

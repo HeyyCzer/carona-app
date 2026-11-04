@@ -4,6 +4,7 @@ library;
 
 export 'action_tile.dart';
 export 'app_card.dart';
+export 'app_logo.dart';
 export 'apple_route_map.dart';
 export 'auth_scaffold.dart';
 export 'avatar.dart';
