@@ -20,6 +20,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
@@ -33,6 +36,7 @@ class SecurityConfig(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http {
             csrf { disable() }
+            cors { configurationSource = corsConfigurationSource() }
             sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
             authorizeHttpRequests {
                 authorize(HttpMethod.POST, "/register", permitAll)
@@ -47,6 +51,22 @@ class SecurityConfig(
             }
         }
         return http.build()
+    }
+
+    // Libera CORS para qualquer origem, método e header (inclui o preflight OPTIONS)
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration().apply {
+            allowedOriginPatterns = listOf("*")
+            allowedMethods = listOf("*")
+            allowedHeaders = listOf("*")
+            exposedHeaders = listOf("*")
+            allowCredentials = true
+            maxAge = 3600
+        }
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/**", config)
+        }
     }
 
     @Bean
