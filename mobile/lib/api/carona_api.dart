@@ -37,6 +37,10 @@ class CaronaApi {
 
   Future<Ride> ride(int id) async => Ride.fromJson(await client.get('/rides/$id'));
 
+  /// Só o motorista e os passageiros confirmados podem ver (senão 403).
+  Future<List<RidePassenger>> ridePassengers(int id) async =>
+      ((await client.get('/rides/$id/passengers')) as List).map((e) => RidePassenger.fromJson(e)).toList();
+
   Future<RideRequest> requestSeat(int rideId, {required Place pickup, required bool recurring}) async =>
       RideRequest.fromJson(
         await client.post('/rides/$rideId/requests', body: {'pickup': pickup.toJson(), 'recurring': recurring}),

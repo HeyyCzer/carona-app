@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../api/models.dart';
+import '../../app/routes.dart';
 import '../../theme.dart';
 import '../../ui/ui.dart';
 import '../../utils/format.dart';
+import '../rides/trip_detail_controller.dart';
 import 'driving_rides_controller.dart';
 
 class DrivingRidesView extends GetView<DrivingRidesController> {
@@ -66,6 +68,10 @@ class DrivingRidesView extends GetView<DrivingRidesController> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
+        onTap: () async {
+          final changed = await Get.toNamed(Routes.tripDetail, arguments: TripDetailArgs(ride: ride));
+          if (changed == true) controller.load();
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -81,7 +87,29 @@ class DrivingRidesView extends GetView<DrivingRidesController> {
               ],
             ),
             const SizedBox(height: 6),
-            Text('${ride.from.label} → ${ride.to.label}', style: mutedStyle),
+            Text(
+              '${ride.from.label} → ${ride.to.label}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: mutedStyle,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.people_alt_outlined, size: 16, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text(taken == 1 ? '1 passageiro' : '$taken passageiros', style: mutedStyle),
+                const SizedBox(width: 12),
+                const Icon(Icons.schedule_rounded, size: 16, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text('Chegada ${ride.estimatedArrivalTime}', style: mutedStyle),
+                const Spacer(),
+                Text(
+                  formatMoneyShort(taken * ride.priceCents),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             if (completed)
               SizedBox(

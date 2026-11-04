@@ -23,6 +23,8 @@ import '../modules/passenger/ride_detail_view.dart';
 import '../modules/places/pickup_map_view.dart';
 import '../modules/places/place_picker_controller.dart';
 import '../modules/places/place_picker_view.dart';
+import '../modules/rides/trip_detail_controller.dart';
+import '../modules/rides/trip_detail_view.dart';
 
 abstract class Routes {
   static const login = '/login';
@@ -42,6 +44,9 @@ abstract class Routes {
   static const myRoutes = '/routes/mine';
   static const earnings = '/earnings';
   static const drivingRides = '/rides/driving';
+
+  /// argumentos: [TripDetailArgs]; devolve `true` se a vaga/carona foi cancelada
+  static const tripDetail = '/trip';
 
   /// argumentos: [Person]
   static const chat = '/chat';
@@ -94,6 +99,11 @@ final appPages = [
     name: Routes.drivingRides,
     page: () => const DrivingRidesView(),
     binding: BindingsBuilder(() => Get.lazyPut(() => DrivingRidesController())),
+  ),
+  GetPage(
+    name: Routes.tripDetail,
+    page: () => const TripDetailView(),
+    binding: BindingsBuilder(() => Get.lazyPut(() => TripDetailController(Get.arguments))),
   ),
   GetPage(
     name: Routes.chat,

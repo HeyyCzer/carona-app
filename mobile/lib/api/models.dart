@@ -227,6 +227,20 @@ class Ride {
       );
 }
 
+/// Passageiro confirmado numa carona (`GET /rides/{id}/passengers`).
+/// O backend só manda o [pickup] quando quem pede é o motorista.
+class RidePassenger {
+  final Person passenger;
+  final Place? pickup;
+
+  const RidePassenger({required this.passenger, this.pickup});
+
+  factory RidePassenger.fromJson(Map<String, dynamic> json) => RidePassenger(
+        passenger: Person.fromJson(json['passenger']),
+        pickup: json['pickup'] == null ? null : Place.fromJson(json['pickup']),
+      );
+}
+
 class RideSearchResult {
   final Ride ride;
   final int distanceFromYouMeters;

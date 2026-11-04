@@ -75,44 +75,90 @@ class ChatView extends GetView<ChatController> {
             child: Container(
               color: AppColors.surface,
               padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller.input,
-                      minLines: 1,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => controller.send(),
-                      decoration: InputDecoration(
-                        hintText: 'Digite uma mensagem...',
-                        fillColor: AppColors.primarySoft,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                        enabledBorder:
-                            OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                        focusedBorder:
-                            OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  const _Presets(),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: controller.input,
+                          minLines: 1,
+                          maxLines: 4,
+                          textCapitalization: TextCapitalization.sentences,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => controller.send(),
+                          decoration: InputDecoration(
+                            hintText: 'Digite uma mensagem...',
+                            fillColor: AppColors.primarySoft,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      Obx(() {
+                        final enabled = controller.canSend.value && !controller.sending.value;
+                        return IconButton(
+                          tooltip: 'Enviar',
+                          onPressed: enabled ? controller.send : null,
+                          icon: controller.sending.value
+                              ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                              : Icon(Icons.send_rounded, color: enabled ? AppColors.primary : AppColors.textHint),
+                        );
+                      }),
+                    ],
                   ),
-                  Obx(() {
-                    final enabled = controller.canSend.value && !controller.sending.value;
-                    return IconButton(
-                      tooltip: 'Enviar',
-                      onPressed: enabled ? controller.send : null,
-                      icon: controller.sending.value
-                          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Icon(Icons.send_rounded, color: enabled ? AppColors.primary : AppColors.textHint),
-                    );
-                  }),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Chips de resposta rápida; tocar envia na hora.
+class _Presets extends GetView<ChatController> {
+  const _Presets();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 46,
+      child: Obx(() {
+        final disabled = controller.sending.value;
+        return ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.only(right: 8, bottom: 10),
+          itemCount: chatPresets.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (context, i) {
+            final text = chatPresets[i];
+            return ActionChip(
+              label: Text(text),
+              onPressed: disabled ? null : () => controller.sendPreset(text),
+              backgroundColor: AppColors.surface,
+              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.primary),
+              side: const BorderSide(color: AppColors.primarySoft, width: 1.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            );
+          },
+        );
+      }),
     );
   }
 }
@@ -132,7 +178,10 @@ class _DateChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(color: AppColors.bubbleIncoming, borderRadius: BorderRadius.circular(999)),
-        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+        ),
       ),
     );
   }
@@ -166,10 +215,7 @@ class _Bubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                message.text,
-                style: TextStyle(fontSize: 15, color: mine ? Colors.white : AppColors.text),
-              ),
+              Text(message.text, style: TextStyle(fontSize: 15, color: mine ? Colors.white : AppColors.text)),
               const SizedBox(height: 2),
               Text(
                 DateFormat.Hm().format(message.sentAt),

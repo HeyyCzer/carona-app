@@ -3,6 +3,7 @@ package me.rafaelpereira.caronaapp.controllers
 import jakarta.validation.Valid
 import me.rafaelpereira.caronaapp.config.userId
 import me.rafaelpereira.caronaapp.controllers.dto.CreateRideRequestDto
+import me.rafaelpereira.caronaapp.controllers.dto.RidePassengerDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideRequestResponseDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideResponseDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideSearchResultDto
@@ -56,6 +57,11 @@ class RideController(
     @PreAuthorize("hasAuthority('ride:search')")
     fun get(@PathVariable id: Long): RideResponseDto =
         rideService.get(id)
+
+    @GetMapping("/{id}/passengers")
+    @PreAuthorize("hasAuthority('ride:search')")
+    fun passengers(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long): List<RidePassengerDto> =
+        rideService.passengers(jwt.userId, id)
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAuthority('route:create')")

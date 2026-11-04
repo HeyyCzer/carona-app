@@ -41,6 +41,9 @@ String relativeDayLong(DateTime date) {
   return '${Weekday.fromDate(date).short}, ${DateFormat('dd/MM').format(date)}';
 }
 
+/// "nov", "dez"...
+String monthShort(DateTime date) => DateFormat('MMM', 'pt_BR').format(date).replaceAll('.', '');
+
 /// "Seg, Qua e Sex"
 String formatWeekdays(Iterable<Weekday> days) {
   final sorted = days.toList()..sort((a, b) => a.index.compareTo(b.index));

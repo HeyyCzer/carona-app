@@ -1,6 +1,8 @@
 package me.rafaelpereira.caronaapp.services
 
 import me.rafaelpereira.caronaapp.controllers.dto.LocationDto
+import me.rafaelpereira.caronaapp.controllers.dto.PersonDto
+import me.rafaelpereira.caronaapp.controllers.dto.RidePassengerDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideResponseDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideSearchResultDto
 import me.rafaelpereira.caronaapp.models.Booking
@@ -138,6 +140,23 @@ class RideService(
 
     @Transactional(readOnly = true)
     fun get(id: Long): RideResponseDto = toResponse(findRide(id))
+
+    /** Passageiros confirmados, na ordem em que entraram. Só o motorista e quem está na carona podem ver. */
+    @Transactional(readOnly = true)
+    fun passengers(userId: Long, id: Long): List<RidePassengerDto> {
+        val ride = findRide(id)
+        val bookings = bookingRepository.findByRideIdAndStatusOrderByCreatedAtAsc(id, BookingStatus.CONFIRMED)
+        val isDriver = ride.driver.id == userId
+        if (!isDriver && bookings.none { it.passenger.id == userId }) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "Você não está nessa carona")
+        }
+        return bookings.map {
+            RidePassengerDto(
+                passenger = PersonDto.from(it.passenger),
+                pickup = if (isDriver) LocationDto.from(it.request.pickup) else null
+            )
+        }
+    }
 
     /** Próximas caronas em que o usuário é o motorista. */
     @Transactional(readOnly = true)

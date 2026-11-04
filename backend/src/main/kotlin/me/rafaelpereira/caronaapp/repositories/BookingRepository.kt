@@ -14,6 +14,8 @@ interface BookingRepository : JpaRepository<Booking, Long> {
 
     fun existsByRideIdAndRequestPassengerIdAndStatus(rideId: Long, passengerId: Long, status: BookingStatus): Boolean
 
+    fun findByRideIdAndStatusOrderByCreatedAtAsc(rideId: Long, status: BookingStatus): List<Booking>
+
     fun findByRequestIdAndStatus(requestId: Long, status: BookingStatus): List<Booking>
 
     fun findByRequestPassengerIdAndRideDateGreaterThanEqualOrderByRideDateAscRideDepartureTimeAsc(

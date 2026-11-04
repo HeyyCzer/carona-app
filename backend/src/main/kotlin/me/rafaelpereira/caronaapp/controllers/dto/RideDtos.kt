@@ -53,3 +53,9 @@ data class RideSearchResultDto(
     val pickupPoint: LocationDto,
     val estimatedPickupTime: LocalTime
 )
+
+/** Passageiro com vaga confirmada; o ponto de embarque só vai para o motorista. */
+data class RidePassengerDto(
+    val passenger: PersonDto,
+    val pickup: LocationDto?
+)

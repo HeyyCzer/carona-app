@@ -9,6 +9,7 @@ import '../../ui/ui.dart';
 import '../../utils/format.dart';
 import '../home/home_controller.dart';
 import '../places/pickup_map_view.dart';
+import '../rides/trip_detail_controller.dart';
 
 /// Linha da lista "Próximas caronas": uma vaga confirmada/cancelada ou um pedido aguardando resposta.
 class UpcomingItem {
@@ -74,6 +75,17 @@ class MyRidesController extends GetxController {
     } finally {
       loading.value = false;
     }
+  }
+
+  /// Só quem tem vaga confirmada vê os outros passageiros.
+  bool canOpenDetails(UpcomingItem item) => item.isConfirmed;
+
+  Future<void> openDetails(UpcomingItem item) async {
+    final changed = await Get.toNamed(
+      Routes.tripDetail,
+      arguments: TripDetailArgs(ride: item.ride, booking: item.booking),
+    );
+    if (changed == true) load();
   }
 
   void message(Ride ride) => Get.toNamed(Routes.chat, arguments: ride.driver);

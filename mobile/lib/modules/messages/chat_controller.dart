@@ -6,6 +6,18 @@ import '../../services/auth_service.dart';
 import '../../services/messages_service.dart';
 import '../../ui/ui.dart';
 
+/// Respostas rápidas mostradas acima do campo, como no Uber.
+const chatPresets = [
+  'Estou a caminho',
+  'Cheguei no ponto de embarque',
+  'Chego em 5 minutos',
+  'Vou me atrasar um pouco',
+  'Onde você está?',
+  'Já estou te esperando',
+  'Ok, combinado!',
+  'Obrigado!',
+];
+
 class ChatController extends GetxController {
   final Person person;
   final MessagesService _messages = Get.find();
@@ -40,18 +52,27 @@ class ChatController extends GetxController {
   }
 
   Future<void> send() async {
-    if (!canSend.value || sending.value) return;
+    if (!canSend.value) return;
+    if (await _send(input.text)) input.clear();
+  }
+
+  /// Envia uma resposta rápida sem mexer no que já está digitado.
+  Future<void> sendPreset(String text) => _send(text);
+
+  Future<bool> _send(String text) async {
+    if (sending.value) return false;
     sending.value = true;
     try {
-      await _messages.send(person, input.text);
-      input.clear();
+      await _messages.send(person, text);
       // A lista é invertida: a posição 0 é a mensagem mais recente.
       if (scroll.hasClients) {
         scroll.animateTo(0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
       }
+      return true;
     } catch (e) {
       // O texto fica no campo para tentar de novo.
       showMessage(errorMessage(e), error: true);
+      return false;
     } finally {
       sending.value = false;
     }

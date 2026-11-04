@@ -96,7 +96,16 @@ class MyRidesView extends GetView<MyRidesController> {
           ),
         ],
       ),
-      const SizedBox(height: 22),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => controller.openDetails(next),
+          icon: const Icon(Icons.people_alt_outlined, size: 18),
+          label: Text('Ver detalhes · ${ride.seats - ride.seatsAvailable}/${ride.seats} pessoas'),
+          style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: AppColors.primary),
+        ),
+      ),
+      const SizedBox(height: 12),
       Row(
         children: [
           Expanded(
@@ -156,6 +165,8 @@ class _UpcomingTile extends StatelessWidget {
       _ => ('Cancelada', AppColors.textHint),
     };
 
+    final taken = ride.seats - ride.seatsAvailable;
+
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => _showActions(),
@@ -169,6 +180,7 @@ class _UpcomingTile extends StatelessWidget {
                 children: [
                   Text(Weekday.fromDate(ride.date).short, style: mutedStyle),
                   Text('${ride.date.day}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                  Text(monthShort(ride.date), style: mutedStyle.copyWith(fontSize: 11)),
                 ],
               ),
             ),
@@ -178,13 +190,34 @@ class _UpcomingTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${ride.direction.label} · ${ride.departureTime}',
+                    '${ride.direction.label} · ${ride.departureTime} → ${ride.estimatedArrivalTime}',
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                   ),
-                  Text('${ride.driver.firstName} · ${formatMoneyShort(item.priceCents)}', style: mutedStyle),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${ride.driver.firstName} · ${formatMoneyShort(item.priceCents)}',
+                    style: mutedStyle,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_alt_outlined, size: 15, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${taken == 1 ? '1 passageiro' : '$taken passageiros'} · '
+                          '${ride.seatsAvailable == 1 ? '1 vaga livre' : '${ride.seatsAvailable} vagas livres'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: mutedStyle,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             StatusLabel(status, color: color),
           ],
         ),
@@ -204,6 +237,15 @@ class _UpcomingTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (controller.canOpenDetails(item))
+                ListTile(
+                  leading: const Icon(Icons.info_outline_rounded),
+                  title: const Text('Ver detalhes da carona'),
+                  onTap: () {
+                    Get.back();
+                    controller.openDetails(item);
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.chat_bubble_outline_rounded),
                 title: Text('Mensagem para ${item.ride.driver.firstName}'),
@@ -223,7 +265,8 @@ class _UpcomingTile extends StatelessWidget {
               if (canSkip)
                 ListTile(
                   leading: const Icon(Icons.close_rounded, color: AppColors.danger),
-                  title: const Text('Não vou nesse dia', style: TextStyle(color: AppColors.danger)),
+                  title: const Text('Não vou', style: TextStyle(color: AppColors.danger)),
+                  subtitle: const Text('Libera sua vaga só neste dia'),
                   onTap: () {
                     Get.back();
                     controller.skip(booking!);
