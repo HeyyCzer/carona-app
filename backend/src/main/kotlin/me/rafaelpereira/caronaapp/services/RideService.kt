@@ -26,10 +26,12 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.security.SecureRandom
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
 
 @Service
@@ -38,10 +40,15 @@ class RideService(
     private val routeRepository: RouteRepository,
     private val rideRequestRepository: RideRequestRepository,
     private val bookingRepository: BookingRepository,
+    private val rules: RideRules,
     private val clock: Clock
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val random = SecureRandom()
+
+    /** Códigos errados digitados por carona, para impedir que o motorista teste todos. */
+    private val failedBoardings = ConcurrentHashMap<Long, AtomicInteger>()
 
     /**
      * Cria as caronas da rota para os próximos [GENERATION_DAYS] dias, ignorando as que já existem,
@@ -88,8 +95,28 @@ class RideService(
             )
         ) return false
 
-        bookingRepository.save(Booking(ride, request, ride.priceCents))
+        val booking = Booking(ride, request, ride.priceCents)
+        // Vaga aceita depois do prazo de confirmação: não dá mais tempo de confirmar, então já vale
+        if (rules.isConfirmationOver(ride)) confirmPresence(booking)
+        bookingRepository.save(booking)
         return true
+    }
+
+    /** Registra a presença e gera um código de embarque de 4 dígitos, único entre as vagas da carona. */
+    fun confirmPresence(booking: Booking) {
+        if (booking.presenceConfirmedAt != null) return
+        val taken = booking.ride.id?.let { rideId ->
+            bookingRepository.findByRideIdAndStatusOrderByCreatedAtAsc(rideId, BookingStatus.CONFIRMED)
+                .mapNotNull { it.boardingCode }
+                .toSet()
+        }.orEmpty()
+        var code: String
+        do {
+            code = "%04d".format(random.nextInt(10_000))
+        } while (code in taken)
+
+        booking.boardingCode = code
+        booking.presenceConfirmedAt = clock.instant()
     }
 
     /**
@@ -150,12 +177,37 @@ class RideService(
         if (!isDriver && bookings.none { it.passenger.id == userId }) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "Você não está nessa carona")
         }
-        return bookings.map {
-            RidePassengerDto(
-                passenger = PersonDto.from(it.passenger),
-                pickup = if (isDriver) LocationDto.from(it.request.pickup) else null
-            )
+        return bookings.map { toPassenger(it, isDriver) }
+    }
+
+    /**
+     * O motorista digita o código que o passageiro mostra no app para registrar o embarque.
+     * Só vale para quem confirmou a presença, e só a partir de pouco antes da saída.
+     */
+    @Transactional
+    fun board(driverId: Long, id: Long, code: String): RidePassengerDto {
+        val ride = findRide(id)
+        requireDriver(ride, driverId)
+        if (!rules.isInProgressWindow(ride)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "O embarque só pode ser registrado perto da hora da saída")
         }
+        val failures = failedBoardings.computeIfAbsent(id) { AtomicInteger() }
+        if (failures.get() >= MAX_FAILED_BOARDINGS) {
+            throw ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Muitos códigos errados. Peça ao passageiro para conferir o código.")
+        }
+
+        val booking = bookingRepository.findByRideIdAndStatusOrderByCreatedAtAsc(id, BookingStatus.CONFIRMED)
+            .firstOrNull { it.presenceConfirmedAt != null && it.boardingCode == code }
+        if (booking == null) {
+            failures.incrementAndGet()
+            throw ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Código inválido")
+        }
+        if (booking.boardedAt != null) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "${booking.passenger.name} já embarcou")
+        }
+
+        booking.boardedAt = clock.instant()
+        return toPassenger(booking, isDriver = true)
     }
 
     /** Próximas caronas em que o usuário é o motorista. */
@@ -166,6 +218,20 @@ class RideService(
         )
             .filter { !hasDeparted(it) }
             .map(::toResponse)
+
+    /**
+     * Caronas do motorista que já saíram e ainda não foram concluídas nem canceladas
+     * (em andamento ou esperando ele marcar como concluída), dos últimos [IN_PROGRESS_DAYS] dias.
+     */
+    @Transactional(readOnly = true)
+    fun inProgressAsDriver(driverId: Long): List<RideResponseDto> {
+        val today = LocalDate.now(clock)
+        return rideRepository.findByRouteDriverIdAndDateBetweenAndStatusOrderByDateAscDepartureTimeAsc(
+            driverId, today.minusDays(IN_PROGRESS_DAYS), today, RideStatus.SCHEDULED
+        )
+            .filter(::hasDeparted)
+            .map(::toResponse)
+    }
 
     @Transactional
     fun cancel(driverId: Long, id: Long): RideResponseDto {
@@ -196,10 +262,16 @@ class RideService(
     fun seatsAvailable(ride: Ride): Int =
         ride.seats - bookingRepository.countByRideIdAndStatus(ride.id!!, BookingStatus.CONFIRMED).toInt()
 
-    fun hasDeparted(ride: Ride): Boolean =
-        !LocalDateTime.of(ride.date, ride.departureTime).isAfter(LocalDateTime.now(clock))
+    fun hasDeparted(ride: Ride): Boolean = !ride.departure.isAfter(LocalDateTime.now(clock))
 
     fun toResponse(ride: Ride) = RideResponseDto.from(ride, seatsAvailable(ride))
+
+    private fun toPassenger(booking: Booking, isDriver: Boolean) = RidePassengerDto(
+        passenger = PersonDto.from(booking.passenger),
+        pickup = if (isDriver) LocationDto.from(booking.request.pickup) else null,
+        bookingId = if (isDriver) booking.id else null,
+        stage = if (isDriver) rules.stage(booking) else null
+    )
 
     private fun requireDriver(ride: Ride, userId: Long) {
         if (ride.driver.id != userId) {
@@ -209,6 +281,8 @@ class RideService(
 
     companion object {
         const val GENERATION_DAYS = 14L
+        const val IN_PROGRESS_DAYS = 7L
+        private const val MAX_FAILED_BOARDINGS = 10
     }
 
 }

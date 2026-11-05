@@ -26,7 +26,7 @@ class ChatView extends GetView<ChatController> {
         titleSpacing: 0,
         title: Row(
           children: [
-            Avatar(name: person.name, size: 40),
+            Avatar.person(person, size: 40),
             const SizedBox(width: 12),
             Expanded(
               child: Text(person.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),

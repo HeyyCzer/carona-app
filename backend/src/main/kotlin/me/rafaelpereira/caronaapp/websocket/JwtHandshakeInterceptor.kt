@@ -9,7 +9,6 @@ import org.springframework.http.server.ServerHttpRequest
 import org.springframework.http.server.ServerHttpResponse
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtException
-import org.springframework.stereotype.Component
 import org.springframework.web.socket.WebSocketHandler
 import org.springframework.web.socket.server.HandshakeInterceptor
 import org.springframework.web.util.UriComponentsBuilder
@@ -17,10 +16,11 @@ import org.springframework.web.util.UriComponentsBuilder
 /**
  * Autentica o handshake do WebSocket com o mesmo JWT da API. O token pode vir no header
  * `Authorization: Bearer ...` ou, para clientes que não conseguem mandar headers, em `?token=...`.
+ * Cada canal exige uma permissão ([requiredPermission]).
  */
-@Component
 class JwtHandshakeInterceptor(
-    private val jwtDecoder: JwtDecoder
+    private val jwtDecoder: JwtDecoder,
+    private val requiredPermission: Permission
 ) : HandshakeInterceptor {
 
     override fun beforeHandshake(
@@ -41,7 +41,7 @@ class JwtHandshakeInterceptor(
             response.setStatusCode(HttpStatus.UNAUTHORIZED)
             return false
         }
-        if (Permission.MESSAGE_SEND.authority !in jwt.getClaimAsStringList(SecurityConfig.AUTHORITIES_CLAIM).orEmpty()) {
+        if (requiredPermission.authority !in jwt.getClaimAsStringList(SecurityConfig.AUTHORITIES_CLAIM).orEmpty()) {
             response.setStatusCode(HttpStatus.FORBIDDEN)
             return false
         }

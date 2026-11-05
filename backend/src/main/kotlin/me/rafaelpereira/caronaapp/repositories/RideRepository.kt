@@ -29,4 +29,11 @@ interface RideRepository : JpaRepository<Ride, Long> {
         status: RideStatus
     ): List<Ride>
 
+    fun findByRouteDriverIdAndDateBetweenAndStatusOrderByDateAscDepartureTimeAsc(
+        driverId: Long,
+        from: LocalDate,
+        to: LocalDate,
+        status: RideStatus
+    ): List<Ride>
+
 }

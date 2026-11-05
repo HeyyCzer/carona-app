@@ -3,15 +3,12 @@ import 'package:get/get.dart';
 import '../../api/carona_api.dart';
 import '../../api/models.dart';
 import '../../services/auth_service.dart';
-import '../../services/driven_rides_service.dart';
 import '../../ui/ui.dart';
 import '../../utils/format.dart';
 
-/// Caronas do motorista: as que já saíram (para concluir) e as próximas (para cancelar se preciso).
+/// Caronas do motorista: as que já saíram (em andamento, para concluir) e as próximas (para cancelar se preciso).
 class DrivingRidesController extends GetxController {
   final CaronaApi _api = Get.find();
-  final AuthService _auth = Get.find();
-  final DrivenRidesService _drivenRides = Get.find();
 
   final upcoming = <Ride>[].obs;
   final toComplete = <Ride>[].obs;
@@ -26,23 +23,18 @@ class DrivingRidesController extends GetxController {
   }
 
   Future<void> load() async {
-    final userId = _auth.currentUser.id;
     loading.value = true;
     error.value = null;
     try {
-      final rides = await _api.drivingRides();
-      _drivenRides.remember(userId, rides);
-      upcoming.assignAll(rides);
-      toComplete.assignAll(await _drivenRides.awaitingCompletion(userId));
+      final results = await Future.wait([_api.drivingRides(), _api.drivingInProgress()]);
+      upcoming.assignAll(results[0]);
+      toComplete.assignAll(results[1]);
     } catch (e) {
       error.value = errorMessage(e);
     } finally {
       loading.value = false;
     }
   }
-
-  Future<void> complete(Ride ride) =>
-      _run(ride, () => _api.completeRide(ride.id), 'Viagem concluída! Ela já conta nos recebimentos.');
 
   Future<void> cancel(Ride ride) async {
     final ok = await confirm(

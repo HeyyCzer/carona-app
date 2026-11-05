@@ -35,9 +35,13 @@ class DrivingRidesView extends GetView<DrivingRidesController> {
                     AppCard(child: MessageView.error(controller.error.value!, controller.load))
                   else ...[
                     if (controller.toComplete.isNotEmpty) ...[
-                      const Text('Para concluir', style: sectionTitleStyle),
+                      const Text('Em andamento', style: sectionTitleStyle),
                       const SizedBox(height: 4),
-                      const Text('Marque as viagens feitas para elas entrarem nos recebimentos.', style: mutedStyle),
+                      const Text(
+                        'Abra a viagem para compartilhar a localização, conferir os códigos de embarque e concluir. '
+                        'Só quem embarcou entra nos recebimentos.',
+                        style: mutedStyle,
+                      ),
                       const SizedBox(height: 12),
                       for (final ride in controller.toComplete) _rideCard(ride, completed: true),
                       const SizedBox(height: 16),
@@ -62,16 +66,19 @@ class DrivingRidesView extends GetView<DrivingRidesController> {
     );
   }
 
+  /// Embarques, localização e conclusão ficam no detalhe da viagem; ao voltar, a lista recarrega.
+  Future<void> _open(Ride ride) async {
+    await Get.toNamed(Routes.tripDetail, arguments: TripDetailArgs(ride: ride));
+    controller.load();
+  }
+
   Widget _rideCard(Ride ride, {required bool completed}) {
     final taken = ride.seats - ride.seatsAvailable;
     final busy = controller.processing.contains(ride.id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
-        onTap: () async {
-          final changed = await Get.toNamed(Routes.tripDetail, arguments: TripDetailArgs(ride: ride));
-          if (changed == true) controller.load();
-        },
+        onTap: () => _open(ride),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -115,9 +122,10 @@ class DrivingRidesView extends GetView<DrivingRidesController> {
               SizedBox(
                 height: 48,
                 child: PrimaryButton(
-                  label: 'Marcar como concluída',
+                  label: 'Abrir viagem',
+                  icon: Icons.near_me_outlined,
                   loading: busy,
-                  onPressed: () => controller.complete(ride),
+                  onPressed: () => _open(ride),
                 ),
               )
             else

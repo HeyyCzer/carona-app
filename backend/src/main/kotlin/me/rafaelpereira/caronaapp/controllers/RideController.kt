@@ -2,16 +2,21 @@ package me.rafaelpereira.caronaapp.controllers
 
 import jakarta.validation.Valid
 import me.rafaelpereira.caronaapp.config.userId
+import me.rafaelpereira.caronaapp.controllers.dto.BoardDto
 import me.rafaelpereira.caronaapp.controllers.dto.CreateRideRequestDto
+import me.rafaelpereira.caronaapp.controllers.dto.RideLocationDto
 import me.rafaelpereira.caronaapp.controllers.dto.RidePassengerDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideRequestResponseDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideResponseDto
 import me.rafaelpereira.caronaapp.controllers.dto.RideSearchResultDto
+import me.rafaelpereira.caronaapp.controllers.dto.UpdateLocationDto
 import me.rafaelpereira.caronaapp.models.Location
 import me.rafaelpereira.caronaapp.services.RideRequestService
 import me.rafaelpereira.caronaapp.services.RideService
+import me.rafaelpereira.caronaapp.services.TrackingService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
@@ -29,7 +34,8 @@ import java.time.LocalDate
 @RequestMapping("/rides")
 class RideController(
     private val rideService: RideService,
-    private val rideRequestService: RideRequestService
+    private val rideRequestService: RideRequestService,
+    private val trackingService: TrackingService
 ) {
 
     @GetMapping("/search")
@@ -53,6 +59,12 @@ class RideController(
     fun driving(@AuthenticationPrincipal jwt: Jwt): List<RideResponseDto> =
         rideService.upcomingAsDriver(jwt.userId)
 
+    /** Caronas que já saíram e esperam o motorista concluir. */
+    @GetMapping("/driving/in-progress")
+    @PreAuthorize("hasAuthority('route:create')")
+    fun drivingInProgress(@AuthenticationPrincipal jwt: Jwt): List<RideResponseDto> =
+        rideService.inProgressAsDriver(jwt.userId)
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ride:search')")
     fun get(@PathVariable id: Long): RideResponseDto =
@@ -62,6 +74,30 @@ class RideController(
     @PreAuthorize("hasAuthority('ride:search')")
     fun passengers(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long): List<RidePassengerDto> =
         rideService.passengers(jwt.userId, id)
+
+    /** O motorista digita o código do passageiro para registrar que ele embarcou. */
+    @PostMapping("/{id}/board")
+    @PreAuthorize("hasAuthority('route:create')")
+    fun board(
+        @AuthenticationPrincipal jwt: Jwt,
+        @PathVariable id: Long,
+        @Valid @RequestBody dto: BoardDto
+    ): RidePassengerDto = rideService.board(jwt.userId, id, dto.code)
+
+    /** O app do motorista envia a posição do carro durante a viagem. */
+    @PostMapping("/{id}/location")
+    @PreAuthorize("hasAuthority('route:create')")
+    fun updateLocation(
+        @AuthenticationPrincipal jwt: Jwt,
+        @PathVariable id: Long,
+        @Valid @RequestBody dto: UpdateLocationDto
+    ): RideLocationDto = trackingService.update(jwt.userId, id, dto)
+
+    /** Última posição do carro; 204 se a viagem não está em andamento ou ainda não há posição. */
+    @GetMapping("/{id}/location")
+    @PreAuthorize("hasAuthority('ride:search')")
+    fun location(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long): ResponseEntity<RideLocationDto> =
+        trackingService.get(jwt.userId, id)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.noContent().build()
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAuthority('route:create')")

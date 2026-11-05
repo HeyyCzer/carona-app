@@ -18,6 +18,15 @@ class CaronaApi {
 
   Future<User> me() async => User.fromJson(await client.get('/me'));
 
+  /// Troca a foto de perfil; a foto fica no backend com o id do usuário como nome.
+  Future<User> uploadAvatar(List<int> bytes, {String filename = 'avatar.jpg'}) async =>
+      User.fromJson(await client.upload('PUT', '/me/avatar', bytes: bytes, filename: filename));
+
+  Future<User> deleteAvatar() async => User.fromJson(await client.delete('/me/avatar'));
+
+  /// URL completa de uma foto de perfil a partir do `avatarUrl` que vem nos DTOs.
+  String avatarUrl(String path) => '${client.baseUrl}$path';
+
   // Passageiro
 
   Future<List<RideSearchResult>> searchRides({
@@ -57,6 +66,15 @@ class CaronaApi {
 
   Future<Booking> cancelBooking(int id) async => Booking.fromJson(await client.post('/bookings/$id/cancel'));
 
+  /// "Vou": confirma a presença poucas horas antes da saída e recebe o código de embarque.
+  Future<Booking> confirmBooking(int id) async => Booking.fromJson(await client.post('/bookings/$id/confirm'));
+
+  /// Última posição do carro, ou null se a viagem não está em andamento.
+  Future<VehicleLocation?> rideLocation(int rideId) async {
+    final json = await client.get('/rides/$rideId/location');
+    return json is Map<String, dynamic> ? VehicleLocation.fromJson(json) : null;
+  }
+
   // Motorista
 
   Future<RoutePreview> previewRoute(Place origin, Place destination) async =>
@@ -78,7 +96,23 @@ class CaronaApi {
   Future<List<Ride>> drivingRides() async =>
       ((await client.get('/rides/driving')) as List).map((e) => Ride.fromJson(e)).toList();
 
+  /// Caronas que já saíram e esperam o motorista marcar como concluídas.
+  Future<List<Ride>> drivingInProgress() async =>
+      ((await client.get('/rides/driving/in-progress')) as List).map((e) => Ride.fromJson(e)).toList();
+
   Future<Ride> cancelRide(int id) async => Ride.fromJson(await client.post('/rides/$id/cancel'));
+
+  /// O motorista digita o código que o passageiro mostra para registrar o embarque.
+  Future<RidePassenger> board(int rideId, String code) async =>
+      RidePassenger.fromJson(await client.post('/rides/$rideId/board', body: {'code': code}));
+
+  Future<void> sendLocation(int rideId, {required double latitude, required double longitude, double? heading, double? speedMps}) =>
+      client.post('/rides/$rideId/location', body: {
+        'latitude': latitude,
+        'longitude': longitude,
+        if (heading != null && heading >= 0) 'heading': heading,
+        if (speedMps != null && speedMps >= 0) 'speedMps': speedMps,
+      });
 
   Future<Ride> completeRide(int id) async => Ride.fromJson(await client.post('/rides/$id/complete'));
 

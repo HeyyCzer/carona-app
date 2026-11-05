@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../api/models.dart';
 import '../theme.dart';
 
 /// Bolinha colorida + texto ("● Confirmada").
@@ -21,3 +22,12 @@ class StatusLabel extends StatelessWidget {
     );
   }
 }
+
+/// Cor de cada situação da vaga: verde só para o que está valendo ou foi feito de fato.
+Color bookingStageColor(BookingStage stage) => switch (stage) {
+      BookingStage.reserved => AppColors.primary,
+      BookingStage.awaitingConfirmation => AppColors.warning,
+      BookingStage.confirmed || BookingStage.boarded || BookingStage.completed => AppColors.success,
+      BookingStage.noShow || BookingStage.notConfirmed => AppColors.danger,
+      BookingStage.cancelled || BookingStage.rideCancelled => AppColors.textHint,
+    };

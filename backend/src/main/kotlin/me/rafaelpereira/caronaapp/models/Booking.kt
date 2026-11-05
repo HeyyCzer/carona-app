@@ -16,6 +16,10 @@ import java.time.Instant
 /**
  * Vaga confirmada de um passageiro em uma [Ride], criada quando o motorista aceita o [RideRequest].
  * Pode ser cancelada individualmente ("Não vou") sem cancelar o pedido recorrente.
+ *
+ * Poucas horas antes da saída o passageiro precisa confirmar que vai ([presenceConfirmedAt]);
+ * quem não confirma até o prazo perde a vaga ([expiredAt], com status [BookingStatus.CANCELLED]).
+ * Ao confirmar, ele recebe o [boardingCode] que o motorista digita para registrar o embarque ([boardedAt]).
  */
 @Entity
 @Table(name = "bookings")
@@ -37,6 +41,16 @@ class Booking(
 
     @Column(nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    var presenceConfirmedAt: Instant? = null,
+
+    /** Quando a vaga foi liberada por falta de confirmação; nulo se o passageiro cancelou por conta própria. */
+    var expiredAt: Instant? = null,
+
+    @Column(length = 4)
+    var boardingCode: String? = null,
+
+    var boardedAt: Instant? = null,
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null

@@ -41,3 +41,6 @@ out/
 
 ### SQLite ###
 *.db
+
+### Fotos de perfil ###
+avatars/

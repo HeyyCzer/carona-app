@@ -17,9 +17,18 @@ class AppleRouteMap extends StatelessWidget {
   final Place? pickup;
   final String? pickupLabel;
   final bool interactive;
+  final VehicleLocation? vehicle;
 
-  const AppleRouteMap(
-      {super.key, this.from, this.to, this.path, this.pickup, this.pickupLabel, this.interactive = true});
+  const AppleRouteMap({
+    super.key,
+    this.from,
+    this.to,
+    this.path,
+    this.pickup,
+    this.pickupLabel,
+    this.interactive = true,
+    this.vehicle,
+  });
 
   static final _hue = HSVColor.fromColor(AppColors.primary).hue;
 
@@ -77,6 +86,14 @@ class AppleRouteMap extends StatelessWidget {
             icon: apple.BitmapDescriptor.markerAnnotationWithHue(apple.BitmapDescriptor.hueGreen),
             infoWindow: apple.InfoWindow(title: 'Ponto de embarque', snippet: pickupLabel),
             zIndex: 1,
+          ),
+        if (vehicle != null)
+          apple.Annotation(
+            annotationId: apple.AnnotationId('vehicle'),
+            position: toAppleLatLng(vehicle!.position),
+            icon: apple.BitmapDescriptor.markerAnnotationWithHue(apple.BitmapDescriptor.hueAzure),
+            infoWindow: const apple.InfoWindow(title: 'Motorista'),
+            zIndex: 2,
           ),
       },
       onMapCreated: (controller) async {

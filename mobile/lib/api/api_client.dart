@@ -34,7 +34,23 @@ class ApiClient {
 
   Future<dynamic> delete(String path) => _send('DELETE', path);
 
-  Future<dynamic> _send(String method, String path, {Map<String, String?>? query, Object? body}) async {
+  /// Envia um arquivo como multipart (campo [field]), por exemplo a foto de perfil.
+  Future<dynamic> upload(
+    String method,
+    String path, {
+    required List<int> bytes,
+    required String filename,
+    String field = 'file',
+  }) {
+    final request = http.MultipartRequest(method, Uri.parse('$baseUrl$path'))
+      ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+    return _dispatch(request, timeout: const Duration(seconds: 60));
+  }
+
+  /// Headers de autenticação, para widgets que baixam direto da API (como as fotos de perfil).
+  Map<String, String> get authHeaders => {if (token != null) 'Authorization': 'Bearer $token'};
+
+  Future<dynamic> _send(String method, String path, {Map<String, String?>? query, Object? body}) {
     final params = {
       for (final entry in (query ?? const {}).entries)
         if (entry.value != null) entry.key: entry.value!,
@@ -42,18 +58,20 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: params.isEmpty ? null : params);
 
     final request = http.Request(method, uri);
-    request.headers['Accept'] = 'application/json';
-    if (token != null) request.headers['Authorization'] = 'Bearer $token';
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
+    return _dispatch(request);
+  }
+
+  Future<dynamic> _dispatch(http.BaseRequest request, {Duration timeout = const Duration(seconds: 15)}) async {
+    request.headers['Accept'] = 'application/json';
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
 
     final http.Response response;
     try {
-      response = await http.Response.fromStream(
-        await _http.send(request).timeout(const Duration(seconds: 15)),
-      );
+      response = await http.Response.fromStream(await _http.send(request).timeout(timeout));
     } on TimeoutException {
       throw const ApiException('O servidor demorou para responder. Tente de novo.');
     } on SocketException {
@@ -89,6 +107,7 @@ class ApiClient {
     }
     return switch (status) {
       401 => 'Sua sessão expirou. Entre novamente.',
+      413 => 'O arquivo é grande demais.',
       403 => 'Você não tem permissão para isso.',
       404 => 'Não encontrado.',
       _ => 'Algo deu errado ($status).',

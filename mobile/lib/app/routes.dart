@@ -46,6 +46,7 @@ abstract class Routes {
   static const drivingRides = '/rides/driving';
 
   /// argumentos: [TripDetailArgs]; devolve `true` se a vaga/carona foi cancelada
+  /// (quem abre recarrega ao voltar, porque a presença e os embarques mudam lá dentro)
   static const tripDetail = '/trip';
 
   /// argumentos: [Person]
