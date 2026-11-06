@@ -23,10 +23,19 @@ interface BookingRepository : JpaRepository<Booking, Long> {
         date: LocalDate
     ): List<Booking>
 
-    fun findByRideRouteDriverIdAndRideStatusAndStatusAndRideDateBetween(
+    /** Vagas em que o passageiro embarcou de fato (o motorista conferiu o código). */
+    fun findByRideRouteDriverIdAndRideStatusAndStatusAndBoardedAtIsNotNullAndRideDateBetween(
         driverId: Long,
         rideStatus: RideStatus,
         status: BookingStatus,
+        from: LocalDate,
+        to: LocalDate
+    ): List<Booking>
+
+    /** Vagas que ainda esperam a confirmação de presença, em caronas agendadas entre as datas. */
+    fun findByStatusAndPresenceConfirmedAtIsNullAndRideStatusAndRideDateBetween(
+        status: BookingStatus,
+        rideStatus: RideStatus,
         from: LocalDate,
         to: LocalDate
     ): List<Booking>

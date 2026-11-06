@@ -26,7 +26,10 @@ class UpcomingItem {
         booking = null;
 
   bool get isPending => request != null;
-  bool get isConfirmed => booking?.status == BookingStatus.confirmed;
+
+  /// Vaga que ainda vale (reservada, esperando confirmação, confirmada ou em viagem).
+  bool get isActive => booking?.isActive ?? false;
+  BookingStage? get stage => booking?.stage;
   int get priceCents => booking?.priceCents ?? ride.priceCents;
 }
 
@@ -49,8 +52,10 @@ class MyRidesController extends GetxController {
     });
   }
 
-  /// Próxima vaga confirmada que ainda não saiu.
-  UpcomingItem? get next => items.firstWhereOrNull((i) => i.isConfirmed && !i.ride.hasDeparted);
+  /// Próxima vaga que ainda vale: a que está em viagem ou a próxima que não saiu.
+  UpcomingItem? get next =>
+      items.firstWhereOrNull((i) => i.stage == BookingStage.boarded) ??
+      items.firstWhereOrNull((i) => i.isActive && !i.ride.hasDeparted);
 
   Future<void> load() async {
     loading.value = true;
@@ -77,16 +82,18 @@ class MyRidesController extends GetxController {
     }
   }
 
-  /// Só quem tem vaga confirmada vê os outros passageiros.
-  bool canOpenDetails(UpcomingItem item) => item.isConfirmed;
+  /// Detalhes de qualquer vaga (os outros passageiros só aparecem depois de confirmar a presença).
+  bool canOpenDetails(UpcomingItem item) => item.booking != null;
 
   Future<void> openDetails(UpcomingItem item) async {
-    final changed = await Get.toNamed(
-      Routes.tripDetail,
-      arguments: TripDetailArgs(ride: item.ride, booking: item.booking),
-    );
-    if (changed == true) load();
+    await Get.toNamed(Routes.tripDetail, arguments: TripDetailArgs(ride: item.ride, booking: item.booking));
+    // A presença, o embarque ou a vaga podem ter mudado lá dentro
+    load();
   }
+
+  /// "Vou": confirma a presença e libera o código de embarque.
+  Future<void> confirmPresence(Booking booking) =>
+      _run(() => _api.confirmBooking(booking.id), 'Presença confirmada! Mostre o código ao motorista no embarque.');
 
   void message(Ride ride) => Get.toNamed(Routes.chat, arguments: ride.driver);
 

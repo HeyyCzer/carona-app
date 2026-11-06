@@ -229,7 +229,7 @@ class _RideTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         child: Row(
           children: [
-            Avatar(name: ride.driver.name),
+            Avatar.person(ride.driver),
             const SizedBox(width: 14),
             Expanded(
               child: Column(

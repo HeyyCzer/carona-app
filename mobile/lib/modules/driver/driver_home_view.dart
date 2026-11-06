@@ -159,8 +159,8 @@ class DriverHomeView extends GetView<DriverHomeController> {
           Expanded(
             child: Text(
               count == 1
-                  ? '1 viagem esperando você marcar como concluída'
-                  : '$count viagens esperando você marcar como concluídas',
+                  ? '1 viagem em andamento: confira os embarques e conclua'
+                  : '$count viagens em andamento: confira os embarques e conclua',
             ),
           ),
           const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
@@ -188,7 +188,7 @@ class _RequestCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Avatar(name: request.passenger.name),
+              Avatar.person(request.passenger),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

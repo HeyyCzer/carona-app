@@ -1,9 +1,13 @@
 package me.rafaelpereira.caronaapp.controllers.dto
 
+import jakarta.validation.constraints.DecimalMax
+import jakarta.validation.constraints.DecimalMin
+import me.rafaelpereira.caronaapp.models.BookingStage
 import me.rafaelpereira.caronaapp.models.Ride
 import me.rafaelpereira.caronaapp.models.RideDirection
 import me.rafaelpereira.caronaapp.models.RideStatus
 import me.rafaelpereira.caronaapp.utils.Polyline
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -54,8 +58,40 @@ data class RideSearchResultDto(
     val estimatedPickupTime: LocalTime
 )
 
-/** Passageiro com vaga confirmada; o ponto de embarque só vai para o motorista. */
+/**
+ * Passageiro com vaga confirmada. O ponto de embarque, a vaga e a situação do embarque
+ * só vão para o motorista.
+ */
 data class RidePassengerDto(
     val passenger: PersonDto,
-    val pickup: LocationDto?
+    val pickup: LocationDto?,
+    val bookingId: Long? = null,
+    val stage: BookingStage? = null
 )
+
+data class UpdateLocationDto(
+    @field:DecimalMin("-90") @field:DecimalMax("90")
+    val latitude: Double,
+    @field:DecimalMin("-180") @field:DecimalMax("180")
+    val longitude: Double,
+    @field:DecimalMin("0") @field:DecimalMax("360")
+    val heading: Double? = null,
+    @field:DecimalMin("0")
+    val speedMps: Double? = null
+)
+
+/** Posição do carro, como vem de `GET /rides/{id}/location` e do WebSocket `/ws/tracking`. */
+data class RideLocationDto(
+    val rideId: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val heading: Double?,
+    val speedMps: Double?,
+    val updatedAt: Instant
+) {
+    companion object {
+        fun from(ride: Ride): RideLocationDto? = ride.driverLocation?.let {
+            RideLocationDto(ride.id!!, it.latitude, it.longitude, it.heading, it.speedMps, it.updatedAt)
+        }
+    }
+}

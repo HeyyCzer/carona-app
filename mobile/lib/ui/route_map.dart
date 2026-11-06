@@ -10,8 +10,8 @@ import 'apple_route_map.dart';
 
 LatLng toLatLng(Place place) => LatLng(place.latitude, place.longitude);
 
-/// Mapa com o trajeto e um destaque opcional para o ponto de embarque.
-/// Sem [path], o trajeto é desenhado como linha reta entre [from] e [to].
+/// Mapa com o trajeto, um destaque opcional para o ponto de embarque e, durante a viagem,
+/// o carro do motorista ([vehicle]). Sem [path], o trajeto é desenhado como linha reta entre [from] e [to].
 class RouteMap extends StatelessWidget {
   final Place? from;
   final Place? to;
@@ -20,14 +20,32 @@ class RouteMap extends StatelessWidget {
   final String? pickupLabel;
   final bool interactive;
 
-  const RouteMap(
-      {super.key, this.from, this.to, this.path, this.pickup, this.pickupLabel, this.interactive = true});
+  /// Posição atual do carro, atualizada em tempo real.
+  final VehicleLocation? vehicle;
+
+  const RouteMap({
+    super.key,
+    this.from,
+    this.to,
+    this.path,
+    this.pickup,
+    this.pickupLabel,
+    this.interactive = true,
+    this.vehicle,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (useAppleMaps) {
       return AppleRouteMap(
-          from: from, to: to, path: path, pickup: pickup, pickupLabel: pickupLabel, interactive: interactive);
+        from: from,
+        to: to,
+        path: path,
+        pickup: pickup,
+        pickupLabel: pickupLabel,
+        interactive: interactive,
+        vehicle: vehicle,
+      );
     }
     final line = path != null && path!.length >= 2
         ? path!
@@ -71,6 +89,13 @@ class RouteMap extends StatelessWidget {
               height: 84,
               alignment: Alignment.topCenter,
               child: _PickupMarker(label: pickupLabel),
+            ),
+          if (vehicle != null)
+            Marker(
+              point: vehicle!.position,
+              width: 40,
+              height: 40,
+              child: VehicleMarker(heading: vehicle!.heading),
             ),
         ]),
         osmAttribution(),
@@ -138,6 +163,33 @@ class _PickupMarker extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// O carro do motorista no mapa: círculo com o ícone, girado para a direção em que ele vai.
+class VehicleMarker extends StatelessWidget {
+  final double? heading;
+
+  const VehicleMarker({super.key, this.heading});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 8, offset: Offset(0, 2))],
+      ),
+      child: Transform.rotate(
+        angle: (heading ?? 0) * 3.141592653589793 / 180,
+        child: Icon(
+          heading == null ? Icons.directions_car_rounded : Icons.navigation_rounded,
+          color: Colors.white,
+          size: 20,
+        ),
+      ),
     );
   }
 }

@@ -10,7 +10,7 @@ import 'api/geocoding.dart';
 import 'app/routes.dart';
 import 'config.dart';
 import 'services/auth_service.dart';
-import 'services/driven_rides_service.dart';
+import 'services/avatar_service.dart';
 import 'services/messages_service.dart';
 import 'services/places_service.dart';
 import 'theme.dart';
@@ -26,7 +26,7 @@ Future<void> main() async {
   final auth = Get.put(AuthService(api, prefs), permanent: true);
   Get.put(PlacesService(prefs, geocoding), permanent: true);
   Get.put(MessagesService(api), permanent: true);
-  Get.put(DrivenRidesService(api, prefs), permanent: true);
+  Get.put(AvatarService(api, auth), permanent: true);
 
   runApp(CaronaApp(initialRoute: auth.isLoggedIn ? Routes.home : Routes.login));
 }

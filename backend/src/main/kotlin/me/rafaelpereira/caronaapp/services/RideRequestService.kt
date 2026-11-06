@@ -116,7 +116,7 @@ class RideRequestService(
 
         request.status = RideRequestStatus.CANCELLED
         bookingRepository.findByRequestIdAndStatus(id, BookingStatus.CONFIRMED)
-            .filter { !rideService.hasDeparted(it.ride) }
+            .filter { !rideService.hasDeparted(it.ride) && it.boardedAt == null }
             .forEach { it.status = BookingStatus.CANCELLED }
         return toResponse(request)
     }

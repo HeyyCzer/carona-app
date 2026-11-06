@@ -18,7 +18,7 @@ cd backend
 ./gradlew bootRun
 ```
 
-A API sobe em `http://localhost:8080` e cria o banco `carona.db` na própria pasta.
+A API sobe em `http://localhost:8080` e cria o banco `carona.db` e a pasta de fotos `avatars/` na própria pasta.
 
 ### 2. App
 
@@ -59,7 +59,7 @@ lib/
 ├── theme.dart         # cores e tipografia do protótipo
 ├── api/               # cliente HTTP, endpoints e modelos (espelham os DTOs do backend)
 ├── app/routes.dart    # rotas nomeadas (GetPage) e seus bindings
-├── services/          # estado global (GetxService): sessão, locais salvos, mensagens
+├── services/          # estado global (GetxService): sessão, locais salvos, mensagens, foto de perfil, rastreamento
 ├── modules/           # uma pasta por funcionalidade, cada tela com controller + view
 │   ├── auth/          # login e cadastro
 │   ├── home/          # navegação inferior e perfil
@@ -75,6 +75,19 @@ Cada tela segue o padrão do GetX: o `*_controller.dart` guarda o estado (`.obs`
 
 Mapas e busca de endereços usam o OpenStreetMap (tiles e Nominatim), que não precisam de chave de API.
 
+## Dia da viagem
+
+1. **Confirmação de presença:** 3 h antes da saída o passageiro precisa dizer se vai ("Vou" / "Não vou"), até 30 min antes. Quem não confirma perde a vaga, que volta para a busca.
+2. **Código de embarque:** ao confirmar, o passageiro recebe um código de 4 dígitos. O motorista digita esse código em **Confirmar embarque** quando ele entra no carro.
+3. **Acompanhamento em tempo real:** de 30 min antes da saída até o fim da viagem, o motorista pode ligar **Compartilhar localização** no detalhe da viagem. Os passageiros confirmados veem o carro andando no mapa (WebSocket `/ws/tracking`).
+4. **Conclusão:** só quem embarcou aparece como viagem concluída e entra nos recebimentos. Quem não foi buscado aparece como "Não embarcou"; quem cancelou ou não confirmou, como "Cancelada" ou "Não confirmada".
+
+Os prazos ficam em `app.rides.*` no `application.properties`.
+
+## Fotos de perfil
+
+Cada usuário pode tirar uma foto com a câmera (ou escolher da galeria) tocando no avatar do perfil. O backend guarda a foto na pasta `app.avatars.dir` (padrão `avatars/`, no Docker `/data/avatars`) com o id do usuário como nome: `avatars/42.jpg`. Os DTOs de pessoas trazem `avatarUrl` (`/users/42/avatar?v=...`), que muda a cada foto nova.
+
 ## O que ainda depende do backend
 
 O protótipo tem algumas partes que o backend ainda não oferece:
@@ -82,4 +95,5 @@ O protótipo tem algumas partes que o backend ainda não oferece:
 - **Mensagens:** não há endpoints de chat. As conversas funcionam, mas ficam salvas só no aparelho de quem escreveu (o app avisa isso na tela). A troca para a API fica concentrada em `services/messages_service.dart`.
 - **Verificação de e-mail** e **recuperação de senha:** não há endpoints, então essas telas não foram incluídas. O cadastro entra direto no app.
 - **Avaliação e veículo do motorista** (ex.: "4,9 · Ford Ka"): não existem no modelo de dados e não aparecem no app.
-- **Concluir viagens:** o backend só lista caronas que ainda não saíram, mas só deixa concluir depois da saída. O app guarda os ids das caronas do motorista para mostrar as que já saíram em **Minhas saídas**, onde ele as marca como concluídas e elas passam a contar nos recebimentos.
+- **Localização em segundo plano:** a posição do motorista só é enviada com o detalhe da viagem aberto. Para continuar com o app em segundo plano seria preciso um serviço em primeiro plano no Android e o modo de localização em background no iOS.
+- **Lembretes de confirmação:** não há notificações push; o passageiro vê o pedido de confirmação ao abrir **Minhas caronas**.

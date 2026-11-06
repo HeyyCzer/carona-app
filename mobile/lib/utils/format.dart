@@ -78,3 +78,10 @@ class GeoEstimate {
 
   static int travelMinutes(int roadMeters) => (roadMeters / _metersPerMinute).ceil();
 }
+
+/// "06:30" se for hoje; senão "amanhã às 06:30" ou "seg, 26/10 às 06:30".
+String formatClock(DateTime dateTime) {
+  final time = DateFormat('HH:mm').format(dateTime);
+  if (isSameDay(dateTime, today())) return time;
+  return '${relativeDayLong(dateTime).toLowerCase()} às $time';
+}

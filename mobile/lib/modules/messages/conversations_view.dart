@@ -108,7 +108,7 @@ class _ConversationTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 18, 8, 18),
       child: Row(
         children: [
-          Avatar(name: conversation.person.name, size: 52),
+          Avatar.person(conversation.person, size: 52),
           const SizedBox(width: 16),
           Expanded(
             child: Column(

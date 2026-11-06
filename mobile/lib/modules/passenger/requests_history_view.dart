@@ -73,7 +73,7 @@ class _RequestCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Avatar(name: ride.driver.name),
+              Avatar.person(ride.driver),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

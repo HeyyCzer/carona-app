@@ -23,6 +23,12 @@ class BookingController(
     fun mine(@AuthenticationPrincipal jwt: Jwt): List<BookingResponseDto> =
         bookingService.mine(jwt.userId)
 
+    /** "Vou": confirma a presença poucas horas antes da saída e recebe o código de embarque. */
+    @PostMapping("/{id}/confirm")
+    fun confirm(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long): BookingResponseDto =
+        bookingService.confirm(jwt.userId, id)
+
+    /** "Não vou". */
     @PostMapping("/{id}/cancel")
     fun cancel(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long): BookingResponseDto =
         bookingService.cancel(jwt.userId, id)

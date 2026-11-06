@@ -1,6 +1,7 @@
 package me.rafaelpereira.caronaapp.models
 
 import jakarta.persistence.Column
+import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -14,6 +15,7 @@ import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import me.rafaelpereira.caronaapp.utils.Geo
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -52,6 +54,10 @@ class Ride(
     @Column(nullable = false)
     var status: RideStatus = RideStatus.SCHEDULED,
 
+    /** Última posição enviada pelo motorista durante a viagem. */
+    @Embedded
+    var driverLocation: VehicleLocation? = null,
+
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null
 ) {
@@ -65,6 +71,8 @@ class Ride(
         get() = if (direction == RideDirection.OUTBOUND) route.destination else route.origin
 
     val roadPath: RoadPath? get() = route.path(direction)
+
+    val departure: LocalDateTime get() = LocalDateTime.of(date, departureTime)
 
     /** Pontos do trajeto pelas ruas ou, sem ele, a linha reta entre a saída e a chegada. */
     fun pathPoints(): List<Location> = roadPath?.points() ?: listOf(from, to)

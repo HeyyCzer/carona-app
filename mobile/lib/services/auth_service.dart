@@ -47,10 +47,7 @@ class AuthService extends GetxService {
     api.client.token = token;
     user.value = User.fromJson(jsonDecode(userJson));
     // Atualiza os dados em segundo plano; um 401 aqui derruba a sessão via onUnauthorized.
-    api.me().then((fresh) {
-      user.value = fresh;
-      prefs.setString(_userKey, jsonEncode(fresh.toJson()));
-    }).catchError((_) {});
+    api.me().then(updateUser).catchError((_) {});
   }
 
   Future<void> login(String email, String password) async {
@@ -68,6 +65,12 @@ class AuthService extends GetxService {
     await prefs.setString(_userKey, jsonEncode(auth.user.toJson()));
     await prefs.setInt(_expiresKey, expiresAt);
     user.value = auth.user;
+  }
+
+  /// Atualiza os dados do usuário logado (por exemplo, depois de trocar a foto).
+  void updateUser(User fresh) {
+    user.value = fresh;
+    prefs.setString(_userKey, jsonEncode(fresh.toJson()));
   }
 
   void logout() {

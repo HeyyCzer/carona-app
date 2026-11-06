@@ -75,4 +75,65 @@ void main() {
     expect(result.estimatedPickupTime.format(), '07:06');
     expect(result.ride.driver.firstName, 'Cauanny');
   });
+
+  test('converte a vaga com a confirmação de presença e o código de embarque', () {
+    final booking = Booking.fromJson({
+      'id': 7,
+      'requestId': 4,
+      'ride': {
+        'id': 28,
+        'routeId': 3,
+        'direction': 'OUTBOUND',
+        'date': '2026-10-29',
+        'departureTime': '07:00:00',
+        'estimatedArrivalTime': '07:11:00',
+        'status': 'SCHEDULED',
+        'distanceMeters': 4360,
+        'path': '',
+        'from': {'label': 'Casa', 'latitude': -20.8113, 'longitude': -49.3758},
+        'to': {'label': 'Unirp', 'latitude': -20.785, 'longitude': -49.36},
+        'driver': {'id': 3, 'name': 'Cauanny Silva', 'avatarUrl': '/users/3/avatar?v=1'},
+        'priceCents': 600,
+        'seats': 3,
+        'seatsAvailable': 2,
+      },
+      'pickup': {'label': 'Ponto', 'latitude': -20.79795, 'longitude': -49.36778},
+      'priceCents': 600,
+      'status': 'CONFIRMED',
+      'stage': 'CONFIRMED',
+      'confirmationOpensAt': '2026-10-29T04:00:00',
+      'confirmationDeadline': '2026-10-29T06:30:00',
+      'presenceConfirmedAt': '2026-10-29T08:10:00Z',
+      'boardingCode': '0427',
+      'boardedAt': null,
+    });
+    expect(booking.stage, BookingStage.confirmed);
+    expect(booking.isActive, isTrue);
+    expect(booking.canTrack, isTrue);
+    expect(booking.boardingCode, '0427');
+    expect(booking.confirmationDeadline, DateTime(2026, 10, 29, 6, 30));
+    expect(booking.ride.driver.avatarUrl, '/users/3/avatar?v=1');
+  });
+
+  test('só a viagem feita com o passageiro a bordo conta como concluída', () {
+    expect(BookingStage.fromApi('COMPLETED').label, 'Concluída');
+    for (final stage in [BookingStage.noShow, BookingStage.notConfirmed, BookingStage.cancelled]) {
+      expect(stage.label, isNot('Concluída'));
+      expect(stage.isActive, isFalse);
+    }
+  });
+
+  test('posição do carro', () {
+    final location = VehicleLocation.fromJson({
+      'rideId': 28,
+      'latitude': -20.8,
+      'longitude': -49.37,
+      'heading': 45,
+      'speedMps': null,
+      'updatedAt': '2026-10-29T09:55:00Z',
+    });
+    expect(location.position.latitude, -20.8);
+    expect(location.heading, 45.0);
+    expect(location.speedMps, isNull);
+  });
 }

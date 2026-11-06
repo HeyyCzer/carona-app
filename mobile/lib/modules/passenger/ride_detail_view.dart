@@ -72,7 +72,7 @@ class RideDetailView extends GetView<RideDetailController> {
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   child: Row(
                     children: [
-                      Avatar(name: ride.driver.name),
+                      Avatar.person(ride.driver),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(

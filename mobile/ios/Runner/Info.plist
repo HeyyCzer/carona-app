@@ -3,7 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Usamos sua localização para preencher de onde você sai e mostrar caronas perto de você.</string>
+	<string>Usamos sua localização para preencher de onde você sai, mostrar caronas perto de você e, quando você dirige, mostrar aos passageiros onde o carro está.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Usamos a câmera para você tirar a sua foto de perfil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usamos suas fotos para você escolher a sua foto de perfil.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

@@ -70,8 +70,10 @@ class MyRidesView extends GetView<MyRidesController> {
 
   List<Widget> _nextRide(UpcomingItem next) {
     final ride = next.ride;
+    final booking = next.booking!;
+    final stage = booking.stage;
     return [
-      const Text('Próxima carona', style: mutedStyle),
+      Text(stage == BookingStage.boarded ? 'Em viagem' : 'Próxima carona', style: mutedStyle),
       const SizedBox(height: 4),
       Text(
         '${relativeDayLong(ride.date)}, ${ride.departureTime}',
@@ -83,12 +85,12 @@ class MyRidesView extends GetView<MyRidesController> {
           Container(
             width: 8,
             height: 8,
-            decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: bookingStageColor(stage), shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Confirmada · ${ride.driver.firstName}, ${next.booking!.pickup.label}',
+              '${_stageLine(stage)} · ${ride.driver.firstName}, ${booking.pickup.label}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: mutedStyle.copyWith(fontSize: 14),
@@ -100,11 +102,22 @@ class MyRidesView extends GetView<MyRidesController> {
         alignment: Alignment.centerLeft,
         child: TextButton.icon(
           onPressed: () => controller.openDetails(next),
-          icon: const Icon(Icons.people_alt_outlined, size: 18),
-          label: Text('Ver detalhes · ${ride.seats - ride.seatsAvailable}/${ride.seats} pessoas'),
+          icon: Icon(booking.canTrack ? Icons.near_me_outlined : Icons.info_outline_rounded, size: 18),
+          label: Text(
+            booking.canTrack
+                ? 'Acompanhar viagem · ${ride.seats - ride.seatsAvailable}/${ride.seats} pessoas'
+                : 'Ver detalhes',
+          ),
           style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: AppColors.primary),
         ),
       ),
+      if (stage == BookingStage.awaitingConfirmation) ...[
+        const SizedBox(height: 4),
+        _confirmCard(booking),
+      ] else if (stage == BookingStage.confirmed && booking.boardingCode != null) ...[
+        const SizedBox(height: 4),
+        _codeCard(booking),
+      ],
       const SizedBox(height: 12),
       Row(
         children: [
@@ -124,17 +137,84 @@ class MyRidesView extends GetView<MyRidesController> {
               onTap: () => controller.showPickup(next),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ActionTile(
-              icon: Icons.close_rounded,
-              label: 'Não vou',
-              onTap: controller.busy.value ? null : () => controller.skip(next.booking!),
+          if (_canSkip(next)) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: ActionTile(
+                icon: Icons.close_rounded,
+                label: 'Não vou',
+                onTap: controller.busy.value ? null : () => controller.skip(booking),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     ];
+  }
+
+  static String _stageLine(BookingStage stage) => switch (stage) {
+        BookingStage.reserved => 'Reservada',
+        BookingStage.awaitingConfirmation => 'Confirme sua presença',
+        BookingStage.confirmed => 'Presença confirmada',
+        BookingStage.boarded => 'A bordo',
+        _ => stage.label,
+      };
+
+  /// Poucas horas antes da saída: "Vou" ou "Não vou". Sem resposta até o prazo, a vaga é liberada.
+  Widget _confirmCard(Booking booking) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Você vai nessa carona?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(
+            'Confirme até ${formatClock(booking.confirmationDeadline)}. Sem confirmação, sua vaga é liberada.',
+            style: mutedStyle,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: SoftButton(
+                  label: 'Não vou',
+                  height: 48,
+                  foreground: AppColors.danger,
+                  onPressed: controller.busy.value ? null : () => controller.skip(booking),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: PrimaryButton(
+                    label: 'Vou',
+                    loading: controller.busy.value,
+                    onPressed: () => controller.confirmPresence(booking),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _codeCard(Booking booking) {
+    return AppCard(
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text('Código de embarque\nMostre ao motorista ao entrar no carro', style: mutedStyle),
+          ),
+          Text(
+            booking.boardingCode!,
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: 8),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _noNextRide() {
@@ -159,11 +239,10 @@ class _UpcomingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ride = item.ride;
-    final (status, color) = switch (item) {
-      _ when item.isPending => ('Aguardando', AppColors.warning),
-      _ when item.isConfirmed => ('Confirmada', AppColors.success),
-      _ => ('Cancelada', AppColors.textHint),
-    };
+    final stage = item.stage;
+    final (status, color) = stage == null
+        ? ('Aguardando', AppColors.warning)
+        : (stage.label, bookingStageColor(stage));
 
     final taken = ride.seats - ride.seatsAvailable;
 
@@ -228,7 +307,7 @@ class _UpcomingTile extends StatelessWidget {
   void _showActions() {
     final booking = item.booking;
     final request = item.request;
-    final canSkip = item.isConfirmed && !item.ride.hasDeparted;
+    final canSkip = _canSkip(item);
 
     Get.bottomSheet(
       SafeArea(
@@ -262,6 +341,16 @@ class _UpcomingTile extends StatelessWidget {
                   controller.showPickup(item);
                 },
               ),
+              if (item.stage == BookingStage.awaitingConfirmation)
+                ListTile(
+                  leading: const Icon(Icons.check_circle_outline_rounded, color: AppColors.success),
+                  title: const Text('Vou nessa carona'),
+                  subtitle: Text('Confirme até ${formatClock(booking!.confirmationDeadline)}'),
+                  onTap: () {
+                    Get.back();
+                    controller.confirmPresence(booking!);
+                  },
+                ),
               if (canSkip)
                 ListTile(
                   leading: const Icon(Icons.close_rounded, color: AppColors.danger),
@@ -289,4 +378,11 @@ class _UpcomingTile extends StatelessWidget {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     );
   }
+}
+
+/// "Não vou" vale até a saída, enquanto o passageiro ainda não embarcou.
+bool _canSkip(UpcomingItem item) {
+  final stage = item.stage;
+  return !item.ride.hasDeparted &&
+      (stage == BookingStage.reserved || stage == BookingStage.awaitingConfirmation || stage == BookingStage.confirmed);
 }

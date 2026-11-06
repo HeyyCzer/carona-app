@@ -80,6 +80,53 @@ enum RideRequestStatus { pending, accepted, rejected, cancelled }
 
 enum BookingStatus { confirmed, cancelled }
 
+/// Situação da vaga, calculada pelo backend. Só [completed] é viagem feita:
+/// quem não embarcou, cancelou ou não confirmou a presença nunca aparece como concluído.
+enum BookingStage {
+  /// Vaga reservada; a confirmação de presença ainda não abriu.
+  reserved('RESERVED'),
+
+  /// Poucas horas antes da saída: o passageiro precisa dizer se vai.
+  awaitingConfirmation('AWAITING_CONFIRMATION'),
+
+  /// Presença confirmada; o passageiro já tem o código de embarque.
+  confirmed('CONFIRMED'),
+
+  /// O motorista conferiu o código: o passageiro está no carro.
+  boarded('BOARDED'),
+  completed('COMPLETED'),
+
+  /// A viagem foi concluída sem o passageiro ter embarcado.
+  noShow('NO_SHOW'),
+
+  /// Não confirmou a presença a tempo e perdeu a vaga.
+  notConfirmed('NOT_CONFIRMED'),
+  cancelled('CANCELLED'),
+  rideCancelled('RIDE_CANCELLED');
+
+  final String api;
+
+  const BookingStage(this.api);
+
+  static BookingStage fromApi(String value) => values.firstWhere((s) => s.api == value);
+
+  /// Vaga que ainda vale: o passageiro vai (ou pode ir) nessa carona.
+  bool get isActive => this == reserved || this == awaitingConfirmation || this == confirmed || this == boarded;
+
+  /// Rótulo curto para listas.
+  String get label => switch (this) {
+        reserved => 'Reservada',
+        awaitingConfirmation => 'Confirme',
+        confirmed => 'Confirmada',
+        boarded => 'Em viagem',
+        completed => 'Concluída',
+        noShow => 'Não embarcou',
+        notConfirmed => 'Não confirmada',
+        cancelled => 'Cancelada',
+        rideCancelled => 'Cancelada',
+      };
+}
+
 T _enumByName<T extends Enum>(List<T> values, String name) =>
     values.firstWhere((v) => v.name.toUpperCase() == name);
 
@@ -89,15 +136,27 @@ class User {
   final String email;
   final Set<String> permissions;
 
-  const User({required this.id, required this.name, required this.email, required this.permissions});
+  /// Caminho da foto de perfil na API (`/users/{id}/avatar?v=...`), ou null sem foto.
+  final String? avatarUrl;
+
+  const User({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.permissions,
+    this.avatarUrl,
+  });
 
   String get firstName => name.trim().split(RegExp(r'\s+')).first;
+
+  Person get asPerson => Person(id: id, name: name, avatarUrl: avatarUrl);
 
   factory User.fromJson(Map<String, dynamic> json) => User(
         id: json['id'],
         name: json['name'],
         email: json['email'],
         permissions: Set<String>.from(json['permissions'] ?? const []),
+        avatarUrl: json['avatarUrl'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -105,6 +164,7 @@ class User {
         'name': name,
         'email': email,
         'permissions': permissions.toList(),
+        'avatarUrl': avatarUrl,
       };
 }
 
@@ -126,13 +186,17 @@ class Person {
   final int id;
   final String name;
 
-  const Person({required this.id, required this.name});
+  /// Caminho da foto de perfil na API, ou null sem foto.
+  final String? avatarUrl;
+
+  const Person({required this.id, required this.name, this.avatarUrl});
 
   String get firstName => name.trim().split(RegExp(r'\s+')).first;
 
-  factory Person.fromJson(Map<String, dynamic> json) => Person(id: json['id'], name: json['name']);
+  factory Person.fromJson(Map<String, dynamic> json) =>
+      Person(id: json['id'], name: json['name'], avatarUrl: json['avatarUrl']);
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'avatarUrl': avatarUrl};
 }
 
 class Place {
@@ -228,16 +292,47 @@ class Ride {
 }
 
 /// Passageiro confirmado numa carona (`GET /rides/{id}/passengers`).
-/// O backend só manda o [pickup] quando quem pede é o motorista.
+/// O backend só manda o [pickup], o [bookingId] e o [stage] quando quem pede é o motorista.
 class RidePassenger {
   final Person passenger;
   final Place? pickup;
+  final int? bookingId;
+  final BookingStage? stage;
 
-  const RidePassenger({required this.passenger, this.pickup});
+  const RidePassenger({required this.passenger, this.pickup, this.bookingId, this.stage});
 
   factory RidePassenger.fromJson(Map<String, dynamic> json) => RidePassenger(
         passenger: Person.fromJson(json['passenger']),
         pickup: json['pickup'] == null ? null : Place.fromJson(json['pickup']),
+        bookingId: json['bookingId'],
+        stage: json['stage'] == null ? null : BookingStage.fromApi(json['stage']),
+      );
+}
+
+/// Posição do carro durante a viagem (`GET /rides/{id}/location` e WebSocket `/ws/tracking`).
+class VehicleLocation {
+  final int rideId;
+  final LatLng position;
+
+  /// Direção em graus (0 = norte), quando o GPS do motorista informa.
+  final double? heading;
+  final double? speedMps;
+  final DateTime updatedAt;
+
+  const VehicleLocation({
+    required this.rideId,
+    required this.position,
+    this.heading,
+    this.speedMps,
+    required this.updatedAt,
+  });
+
+  factory VehicleLocation.fromJson(Map<String, dynamic> json) => VehicleLocation(
+        rideId: json['rideId'],
+        position: LatLng((json['latitude'] as num).toDouble(), (json['longitude'] as num).toDouble()),
+        heading: (json['heading'] as num?)?.toDouble(),
+        speedMps: (json['speedMps'] as num?)?.toDouble(),
+        updatedAt: DateTime.parse(json['updatedAt']).toLocal(),
       );
 }
 
@@ -308,6 +403,15 @@ class Booking {
   final Place pickup;
   final int priceCents;
   final BookingStatus status;
+  final BookingStage stage;
+
+  /// Janela para confirmar a presença, no horário local (como a saída da carona).
+  final DateTime confirmationOpensAt;
+  final DateTime confirmationDeadline;
+
+  /// Código que o passageiro mostra ao motorista; só vem depois de confirmar a presença.
+  final String? boardingCode;
+  final DateTime? boardedAt;
 
   const Booking({
     required this.id,
@@ -316,7 +420,17 @@ class Booking {
     required this.pickup,
     required this.priceCents,
     required this.status,
+    required this.stage,
+    required this.confirmationOpensAt,
+    required this.confirmationDeadline,
+    this.boardingCode,
+    this.boardedAt,
   });
+
+  bool get isActive => stage.isActive;
+
+  /// Pode acompanhar o carro e ver os outros passageiros.
+  bool get canTrack => stage == BookingStage.confirmed || stage == BookingStage.boarded;
 
   factory Booking.fromJson(Map<String, dynamic> json) => Booking(
         id: json['id'],
@@ -325,6 +439,12 @@ class Booking {
         pickup: Place.fromJson(json['pickup']),
         priceCents: json['priceCents'],
         status: _enumByName(BookingStatus.values, json['status']),
+        stage: BookingStage.fromApi(json['stage']),
+        // Sem fuso ("2026-11-05T04:00:00"): o DateTime.parse lê como horário local, igual à saída da carona.
+        confirmationOpensAt: DateTime.parse(json['confirmationOpensAt']),
+        confirmationDeadline: DateTime.parse(json['confirmationDeadline']),
+        boardingCode: json['boardingCode'],
+        boardedAt: json['boardedAt'] == null ? null : DateTime.parse(json['boardedAt']).toLocal(),
       );
 }
 

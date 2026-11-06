@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import '../../api/carona_api.dart';
 import '../../api/models.dart';
 import '../../services/auth_service.dart';
-import '../../services/driven_rides_service.dart';
 import '../../services/messages_service.dart';
 import '../../ui/ui.dart';
 import '../home/home_controller.dart';
@@ -12,7 +11,6 @@ import '../home/home_controller.dart';
 class DriverHomeController extends GetxController {
   final CaronaApi _api = Get.find();
   final AuthService _auth = Get.find();
-  final DrivenRidesService _drivenRides = Get.find();
   final MessagesService _messages = Get.find();
 
   final earnings = Rxn<Earnings>();
@@ -44,15 +42,15 @@ class DriverHomeController extends GetxController {
         _api.earnings(),
         _api.drivingRides(),
         _api.receivedRequests(status: RideRequestStatus.pending),
+        _api.drivingInProgress(),
       ]);
       earnings.value = results[0] as Earnings;
       final rides = results[1] as List<Ride>;
       nextRide.value = rides.firstOrNull;
       requests.assignAll(results[2] as List<RideRequest>);
+      awaitingCompletion.value = (results[3] as List<Ride>).length;
 
-      _drivenRides.remember(user.id, rides);
       _messages.addContacts(requests.map((r) => r.passenger));
-      _drivenRides.awaitingCompletion(user.id).then((list) => awaitingCompletion.value = list.length);
     } catch (e) {
       error.value = errorMessage(e);
     } finally {

@@ -45,6 +45,7 @@ dependencies:
   geolocator: ^14.1.2
   apple_maps_flutter: ^1.4.0
   web_socket_channel: ^3.0.3
+  image_picker: ^1.2.0
 
 dev_dependencies:
   flutter_test:

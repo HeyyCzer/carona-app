@@ -13,6 +13,8 @@ services:
       OSRM_URL: ${OSRM_URL:-https://router.project-osrm.org}
       # O banco SQLite fica no volume para não ser perdido a cada deploy
       SPRING_DATASOURCE_URL: jdbc:sqlite:/data/carona.db
+      # As fotos de perfil também ficam no volume
+      AVATARS_DIR: /data/avatars
       TZ: America/Sao_Paulo
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
     volumes:

@@ -15,7 +15,8 @@ import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
 /**
- * Recebimentos do motorista: soma das vagas confirmadas em caronas concluídas.
+ * Recebimentos do motorista: soma das vagas de quem embarcou (código conferido) em caronas concluídas.
+ * Quem cancelou, não confirmou a presença ou não foi buscado não entra.
  * O pagamento em si (Pix) acontece fora do app.
  */
 @Service
@@ -33,7 +34,7 @@ class EarningsService(
         }
 
         val rides = bookingRepository
-            .findByRideRouteDriverIdAndRideStatusAndStatusAndRideDateBetween(
+            .findByRideRouteDriverIdAndRideStatusAndStatusAndBoardedAtIsNotNullAndRideDateBetween(
                 driverId, RideStatus.COMPLETED, BookingStatus.CONFIRMED, start, end
             )
             .groupBy { it.ride }

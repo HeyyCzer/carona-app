@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.Table
+import java.time.Instant
 
 @Entity
 @Table(name = "users")
@@ -30,6 +31,9 @@ class User(
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     var roles: MutableSet<Role> = mutableSetOf(Role.USER),
+
+    /** Quando a foto em `avatars/{id}` foi trocada pela última vez; nulo se o usuário não tem foto. */
+    var avatarUpdatedAt: Instant? = null,
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null
