@@ -13,7 +13,8 @@ List<LatLng> decodePolyline(String encoded) {
       result |= (chunk & 0x1f) << shift;
       shift += 5;
     } while (chunk >= 0x20);
-    return (result & 1) != 0 ? ~(result >> 1) : result >> 1;
+    // Sem `~`: na web os operadores bit a bit dão resultado sem sinal (32 bits) e ~x viraria positivo.
+    return (result & 1) != 0 ? -(result >> 1) - 1 : result >> 1;
   }
 
   while (index < encoded.length) {
