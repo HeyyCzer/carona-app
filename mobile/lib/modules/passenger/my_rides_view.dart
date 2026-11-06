@@ -348,7 +348,7 @@ class _UpcomingTile extends StatelessWidget {
                   subtitle: Text('Confirme até ${formatClock(booking!.confirmationDeadline)}'),
                   onTap: () {
                     Get.back();
-                    controller.confirmPresence(booking!);
+                    controller.confirmPresence(booking);
                   },
                 ),
               if (canSkip)
