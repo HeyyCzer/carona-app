@@ -1,4 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+
+import '../api/models.dart';
 
 import '../modules/auth/login_controller.dart';
 import '../modules/auth/login_view.dart';
@@ -25,6 +28,7 @@ import '../modules/places/place_picker_controller.dart';
 import '../modules/places/place_picker_view.dart';
 import '../modules/rides/trip_detail_controller.dart';
 import '../modules/rides/trip_detail_view.dart';
+import '../services/auth_service.dart';
 
 abstract class Routes {
   static const login = '/login';
@@ -67,15 +71,15 @@ final appPages = [
   GetPage(name: Routes.home, page: () => const HomeView(), binding: HomeBinding()),
   GetPage(
     name: Routes.rideDetail,
-    page: () => const RideDetailView(),
+    page: () => _requireArgs<RideDetailArgs>(() => const RideDetailView()),
     binding: BindingsBuilder(() => Get.lazyPut(() => RideDetailController(Get.arguments))),
   ),
   GetPage(
     name: Routes.placePicker,
-    page: () => const PlacePickerView(),
+    page: () => _requireArgs<PlacePickerArgs>(() => const PlacePickerView()),
     binding: BindingsBuilder(() => Get.lazyPut(() => PlacePickerController(Get.arguments))),
   ),
-  GetPage(name: Routes.pickupMap, page: () => PickupMapView(args: Get.arguments)),
+  GetPage(name: Routes.pickupMap, page: () => _requireArgs<PickupMapArgs>(() => PickupMapView(args: Get.arguments))),
   GetPage(
     name: Routes.requestsHistory,
     page: () => const RequestsHistoryView(),
@@ -103,12 +107,28 @@ final appPages = [
   ),
   GetPage(
     name: Routes.tripDetail,
-    page: () => const TripDetailView(),
+    page: () => _requireArgs<TripDetailArgs>(() => const TripDetailView()),
     binding: BindingsBuilder(() => Get.lazyPut(() => TripDetailController(Get.arguments))),
   ),
   GetPage(
     name: Routes.chat,
-    page: () => const ChatView(),
+    page: () => _requireArgs<Person>(() => const ChatView()),
     binding: BindingsBuilder(() => Get.lazyPut(() => ChatController(Get.arguments))),
   ),
 ];
+
+/// No web, recarregar a página reabre a URL atual, mas os argumentos da navegação se perdem.
+/// Telas que dependem deles voltam para o início em vez de quebrar.
+Widget _requireArgs<T>(Widget Function() page) => Get.arguments is T ? page() : const _BackToStart();
+
+class _BackToStart extends StatelessWidget {
+  const _BackToStart();
+
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.offAllNamed(Get.find<AuthService>().isLoggedIn ? Routes.home : Routes.login);
+    });
+    return const SizedBox.shrink();
+  }
+}
