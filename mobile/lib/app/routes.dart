@@ -7,8 +7,6 @@ import '../modules/auth/login_controller.dart';
 import '../modules/auth/login_view.dart';
 import '../modules/auth/register_controller.dart';
 import '../modules/auth/register_view.dart';
-import '../modules/driver/driving_rides_controller.dart';
-import '../modules/driver/driving_rides_view.dart';
 import '../modules/driver/earnings_controller.dart';
 import '../modules/driver/earnings_view.dart';
 import '../modules/driver/my_routes_controller.dart';
@@ -47,7 +45,6 @@ abstract class Routes {
   static const newRoute = '/routes/new';
   static const myRoutes = '/routes/mine';
   static const earnings = '/earnings';
-  static const drivingRides = '/rides/driving';
 
   /// argumentos: [TripDetailArgs]; devolve `true` se a vaga/carona foi cancelada
   /// (quem abre recarrega ao voltar, porque a presença e os embarques mudam lá dentro)
@@ -99,11 +96,6 @@ final appPages = [
     name: Routes.earnings,
     page: () => const EarningsView(),
     binding: BindingsBuilder(() => Get.lazyPut(() => EarningsController())),
-  ),
-  GetPage(
-    name: Routes.drivingRides,
-    page: () => const DrivingRidesView(),
-    binding: BindingsBuilder(() => Get.lazyPut(() => DrivingRidesController())),
   ),
   GetPage(
     name: Routes.tripDetail,

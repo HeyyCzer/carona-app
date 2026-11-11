@@ -11,26 +11,41 @@ import '../home/home_controller.dart';
 import '../places/pickup_map_view.dart';
 import '../rides/trip_detail_controller.dart';
 
-/// Linha da lista "Próximas caronas": uma vaga confirmada/cancelada ou um pedido aguardando resposta.
+/// Linha da lista "Próximas caronas": uma vaga confirmada/cancelada, um pedido aguardando resposta
+/// ou uma saída em que o usuário é o motorista.
 class UpcomingItem {
   final Ride ride;
   final Booking? booking;
   final RideRequest? request;
+  final bool isDriving;
 
   UpcomingItem.booking(Booking this.booking)
       : ride = booking.ride,
-        request = null;
+        request = null,
+        isDriving = false;
 
   UpcomingItem.request(RideRequest this.request)
       : ride = request.ride,
-        booking = null;
+        booking = null,
+        isDriving = false;
+
+  UpcomingItem.driving(this.ride)
+      : booking = null,
+        request = null,
+        isDriving = true;
 
   bool get isPending => request != null;
 
-  /// Vaga que ainda vale (reservada, esperando confirmação, confirmada ou em viagem).
-  bool get isActive => booking?.isActive ?? false;
+  /// Vaga que ainda vale (reservada, esperando confirmação, confirmada ou em viagem) ou saída ainda agendada.
+  bool get isActive => isDriving ? ride.status == RideStatus.scheduled : booking?.isActive ?? false;
   BookingStage? get stage => booking?.stage;
-  int get priceCents => booking?.priceCents ?? ride.priceCents;
+
+  /// Para o motorista, o total esperado com os passageiros que reservaram.
+  int get priceCents => isDriving ? passengers * ride.priceCents : booking?.priceCents ?? ride.priceCents;
+  int get passengers => ride.seats - ride.seatsAvailable;
+
+  /// A viagem está acontecendo agora e o usuário participa dela (motorista ou passageiro confirmado).
+  bool get isLive => ride.isHappening && (isDriving || (booking?.canTrack ?? false));
 }
 
 class MyRidesController extends GetxController {
@@ -52,7 +67,10 @@ class MyRidesController extends GetxController {
     });
   }
 
-  /// Próxima vaga que ainda vale: a que está em viagem ou a próxima que não saiu.
+  /// Viagens acontecendo agora, para o atalho do modo viagem.
+  List<UpcomingItem> get live => items.where((i) => i.isLive).toList();
+
+  /// Próxima vaga/saída que ainda vale: a que está em viagem ou a próxima que não saiu.
   UpcomingItem? get next =>
       items.firstWhereOrNull((i) => i.stage == BookingStage.boarded) ??
       items.firstWhereOrNull((i) => i.isActive && !i.ride.hasDeparted);
@@ -61,9 +79,16 @@ class MyRidesController extends GetxController {
     loading.value = true;
     error.value = null;
     try {
-      final results = await Future.wait([_api.myBookings(), _api.myRequests()]);
+      final results = await Future.wait([
+        _api.myBookings(),
+        _api.myRequests(),
+        _api.drivingInProgress(),
+        _api.drivingRides(),
+      ]);
       final bookings = results[0] as List<Booking>;
       final requests = results[1] as List<RideRequest>;
+      // Em andamento e próximas não se repetem, mas o mapa por id garante.
+      final driving = {for (final r in [...results[2] as List<Ride>, ...results[3] as List<Ride>]) r.id: r};
       final start = today();
 
       final list = [
@@ -71,6 +96,7 @@ class MyRidesController extends GetxController {
         ...requests
             .where((r) => r.status == RideRequestStatus.pending && !r.ride.date.isBefore(start))
             .map(UpcomingItem.request),
+        ...driving.values.map(UpcomingItem.driving),
       ]..sort((a, b) => a.ride.departure.compareTo(b.ride.departure));
       items.assignAll(list);
 
@@ -82,8 +108,8 @@ class MyRidesController extends GetxController {
     }
   }
 
-  /// Detalhes de qualquer vaga (os outros passageiros só aparecem depois de confirmar a presença).
-  bool canOpenDetails(UpcomingItem item) => item.booking != null;
+  /// Detalhes de qualquer vaga ou saída (os outros passageiros só aparecem depois de confirmar a presença).
+  bool canOpenDetails(UpcomingItem item) => item.booking != null || item.isDriving;
 
   Future<void> openDetails(UpcomingItem item) async {
     await Get.toNamed(Routes.tripDetail, arguments: TripDetailArgs(ride: item.ride, booking: item.booking));
@@ -94,6 +120,18 @@ class MyRidesController extends GetxController {
   /// "Vou": confirma a presença e libera o código de embarque.
   Future<void> confirmPresence(Booking booking) =>
       _run(() => _api.confirmBooking(booking.id), 'Presença confirmada! Mostre o código ao motorista no embarque.');
+
+  Future<void> cancelRide(Ride ride) async {
+    final ok = await confirm(
+      'Cancelar esta carona?',
+      'A ${ride.direction.label.toLowerCase()} de ${relativeDayLong(ride.date).toLowerCase()} às ${ride.departureTime} '
+          'será cancelada para todos os passageiros. A rota continua valendo nos outros dias.',
+      confirmLabel: 'Cancelar carona',
+      destructive: true,
+    );
+    if (!ok) return;
+    await _run(() => _api.cancelRide(ride.id), 'Carona cancelada.');
+  }
 
   void message(Ride ride) => Get.toNamed(Routes.chat, arguments: ride.driver);
 

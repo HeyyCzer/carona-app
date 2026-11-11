@@ -272,6 +272,18 @@ class Ride {
 
   bool get hasDeparted => !departure.isAfter(DateTime.now());
 
+  /// Iguais a `app.rides.tracking-*` no backend: a viagem "está acontecendo" de 30 min antes da saída até 6 h depois.
+  static const trackingStartsBefore = Duration(minutes: 30);
+  static const trackingMaxDuration = Duration(hours: 6);
+
+  /// Entre pouco antes da saída e algumas horas depois, com a carona ainda agendada.
+  bool isHappeningAt(DateTime t) =>
+      status == RideStatus.scheduled &&
+      !t.isBefore(departure.subtract(trackingStartsBefore)) &&
+      t.isBefore(departure.add(trackingMaxDuration));
+
+  bool get isHappening => isHappeningAt(DateTime.now());
+
   factory Ride.fromJson(Map<String, dynamic> json) => Ride(
         id: json['id'],
         routeId: json['routeId'],

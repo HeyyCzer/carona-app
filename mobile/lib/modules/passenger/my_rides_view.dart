@@ -9,7 +9,8 @@ import '../../utils/format.dart';
 import '../home/home_controller.dart';
 import 'my_rides_controller.dart';
 
-/// Aba "Caronas": próxima carona confirmada e as próximas vagas/pedidos.
+/// Aba "Caronas": tudo o que está marcado, como passageiro ou motorista, em ordem de saída.
+/// No topo, um atalho para o modo viagem quando alguma está acontecendo.
 class MyRidesView extends GetView<MyRidesController> {
   const MyRidesView({super.key});
 
@@ -41,7 +42,14 @@ class MyRidesView extends GetView<MyRidesController> {
             else if (controller.error.value != null)
               AppCard(child: MessageView.error(controller.error.value!, controller.load))
             else ...[
-              if (next != null) ..._nextRide(next) else _noNextRide(),
+              for (final item in controller.live)
+                Padding(padding: const EdgeInsets.only(bottom: 20), child: _liveBanner(item)),
+              if (next == null)
+                _noNextRide()
+              else if (next.isDriving)
+                ..._nextDriving(next)
+              else
+                ..._nextRide(next),
               const SizedBox(height: 28),
               const Text('Próximas caronas', style: sectionTitleStyle),
               const SizedBox(height: 14),
@@ -66,6 +74,87 @@ class MyRidesView extends GetView<MyRidesController> {
         );
       }),
     );
+  }
+
+  /// "Em viagem agora": abre a carona direto no modo viagem.
+  Widget _liveBanner(UpcomingItem item) {
+    final ride = item.ride;
+    return AppCard(
+      color: AppColors.primary,
+      onTap: () => controller.openDetails(item),
+      child: Row(
+        children: [
+          const Icon(Icons.navigation_rounded, color: Colors.white, size: 28),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ride.hasDeparted ? 'Em viagem agora' : 'Sua viagem vai começar',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  item.isDriving
+                      ? 'Você dirige · ${ride.direction.label} ${ride.departureTime} · toque para abrir o modo viagem'
+                      : 'Com ${ride.driver.firstName} · ${ride.direction.label} ${ride.departureTime} · '
+                          'toque para acompanhar',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: Colors.white),
+        ],
+      ),
+    );
+  }
+
+  /// Próxima saída em que o usuário dirige.
+  List<Widget> _nextDriving(UpcomingItem next) {
+    final ride = next.ride;
+    return [
+      const Text('Próxima saída · você dirige', style: mutedStyle),
+      const SizedBox(height: 4),
+      Text(
+        '${relativeDayLong(ride.date)}, ${ride.departureTime}',
+        style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        '${ride.from.label} → ${ride.to.label}',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: mutedStyle.copyWith(fontSize: 14),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        '${next.passengers == 1 ? '1 passageiro' : '${next.passengers} passageiros'} · '
+        'chegada ${ride.estimatedArrivalTime} · ${formatMoneyShort(next.priceCents)}',
+        style: mutedStyle.copyWith(fontSize: 14),
+      ),
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Expanded(
+            child: ActionTile(
+              icon: Icons.info_outline_rounded,
+              label: 'Ver viagem',
+              highlighted: true,
+              onTap: () => controller.openDetails(next),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ActionTile(
+              icon: Icons.close_rounded,
+              label: 'Cancelar',
+              onTap: controller.busy.value ? null : () => controller.cancelRide(ride),
+            ),
+          ),
+        ],
+      ),
+    ];
   }
 
   List<Widget> _nextRide(UpcomingItem next) {
@@ -221,8 +310,8 @@ class MyRidesView extends GetView<MyRidesController> {
     return AppCard(
       child: MessageView(
         icon: Icons.directions_car_outlined,
-        title: 'Nenhuma carona confirmada',
-        subtitle: 'Quando um motorista aceitar seu pedido, ela aparece aqui.',
+        title: 'Nenhuma carona marcada',
+        subtitle: 'As caronas que você pega e as que você oferece aparecem aqui.',
         actionLabel: 'Buscar carona',
         onAction: () => Get.find<HomeController>().select(HomeTab.search),
       ),
@@ -240,11 +329,13 @@ class _UpcomingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ride = item.ride;
     final stage = item.stage;
-    final (status, color) = stage == null
+    final (status, color) = item.isDriving
+        ? (ride.hasDeparted ? ('Em andamento', AppColors.warning) : ('Agendada', AppColors.success))
+        : stage == null
         ? ('Aguardando', AppColors.warning)
         : (stage.label, bookingStageColor(stage));
 
-    final taken = ride.seats - ride.seatsAvailable;
+    final taken = item.passengers;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -272,10 +363,22 @@ class _UpcomingTile extends StatelessWidget {
                     '${ride.direction.label} · ${ride.departureTime} → ${ride.estimatedArrivalTime}',
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${ride.driver.firstName} · ${formatMoneyShort(item.priceCents)}',
-                    style: mutedStyle,
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      _RoleTag(driving: item.isDriving),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.isDriving
+                              ? formatMoneyShort(item.priceCents)
+                              : '${ride.driver.firstName} · ${formatMoneyShort(item.priceCents)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: mutedStyle,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -305,6 +408,7 @@ class _UpcomingTile extends StatelessWidget {
   }
 
   void _showActions() {
+    if (item.isDriving) return _showDrivingActions();
     final booking = item.booking;
     final request = item.request;
     final canSkip = _canSkip(item);
@@ -376,6 +480,73 @@ class _UpcomingTile extends StatelessWidget {
       ),
       backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    );
+  }
+
+  void _showDrivingActions() {
+    final ride = item.ride;
+    Get.bottomSheet(
+      SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(item.isLive ? Icons.navigation_rounded : Icons.info_outline_rounded),
+                title: Text(item.isLive ? 'Abrir modo viagem' : 'Ver viagem'),
+                subtitle: const Text('Passageiros, embarques e localização'),
+                onTap: () {
+                  Get.back();
+                  controller.openDetails(item);
+                },
+              ),
+              if (!ride.hasDeparted && ride.status == RideStatus.scheduled)
+                ListTile(
+                  leading: const Icon(Icons.close_rounded, color: AppColors.danger),
+                  title: const Text('Cancelar esta carona', style: TextStyle(color: AppColors.danger)),
+                  subtitle: const Text('Só neste dia; a rota continua valendo'),
+                  onTap: () {
+                    Get.back();
+                    controller.cancelRide(ride);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    );
+  }
+}
+
+/// Selo "Motorista" / "Passageiro" nas linhas da lista.
+class _RoleTag extends StatelessWidget {
+  final bool driving;
+
+  const _RoleTag({required this.driving});
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = driving ? Colors.white : AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: driving ? AppColors.primary : AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(driving ? Icons.directions_car_rounded : Icons.person_rounded, size: 12, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            driving ? 'Motorista' : 'Passageiro',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: foreground),
+          ),
+        ],
+      ),
     );
   }
 }

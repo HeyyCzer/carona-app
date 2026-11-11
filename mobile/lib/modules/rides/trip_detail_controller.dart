@@ -28,10 +28,6 @@ class TripDetailArgs {
 /// O motorista compartilha a posição, confere os códigos de embarque e conclui a viagem.
 /// Quem abre a tela recarrega a lista ao voltar, porque quase tudo aqui muda a vaga ou a carona.
 class TripDetailController extends GetxController {
-  /// Iguais a `app.rides.tracking-*` no backend: a viagem "está acontecendo" de 30 min antes da saída até 6 h depois.
-  static const trackingStartsBefore = Duration(minutes: 30);
-  static const trackingMaxDuration = Duration(hours: 6);
-
   final TripDetailArgs args;
   final CaronaApi _api = Get.find();
   final AuthService _auth = Get.find();
@@ -42,6 +38,11 @@ class TripDetailController extends GetxController {
   final loading = false.obs;
   final error = RxnString();
   final busy = false.obs;
+
+  /// Modo viagem: mapa em tela cheia e só o que importa durante o trajeto.
+  /// Liga sozinho na primeira vez que a viagem está acontecendo; o usuário pode sair para os detalhes.
+  final live = false.obs;
+  bool _autoLiveDone = false;
 
   /// Hora atual, atualizada a cada 30 s para a contagem "Partida em X min".
   final now = DateTime.now().obs;
@@ -61,12 +62,10 @@ class TripDetailController extends GetxController {
   VehicleLocation? get vehicle => _tracker.location.value;
 
   /// Entre pouco antes da saída e algumas horas depois, com a carona ainda agendada.
-  bool get inTripWindow {
-    if (ride.status != RideStatus.scheduled) return false;
-    final t = now.value;
-    return !t.isBefore(ride.departure.subtract(trackingStartsBefore)) &&
-        t.isBefore(ride.departure.add(trackingMaxDuration));
-  }
+  bool get inTripWindow => ride.isHappeningAt(now.value);
+
+  /// A viagem está acontecendo e quem abriu participa dela (motorista ou passageiro confirmado).
+  bool get canGoLive => canSeeTrip && inTripWindow;
 
   /// O passageiro só acompanha o carro e vê os outros depois de confirmar que vai.
   bool get canSeeTrip => isDriver || (booking?.canTrack ?? false);
@@ -86,6 +85,9 @@ class TripDetailController extends GetxController {
   bool get canBoard => isDriver && inTripWindow;
 
   int get boardedCount => passengers.where((p) => p.stage == BookingStage.boarded).length;
+
+  /// Passageiros que confirmaram a presença e ainda não embarcaram.
+  int get confirmedWaiting => passengers.where((p) => p.stage == BookingStage.confirmed).length;
 
   /// "Partida em 12 min", "Em viagem", "Você não embarcou"...
   String get headline {
@@ -171,6 +173,8 @@ class TripDetailController extends GetxController {
       now.value = DateTime.now();
       _syncTracking();
     });
+    // Abre direto no modo viagem se ela já está acontecendo, sem esperar o carregamento.
+    _syncTracking();
     load();
   }
 
@@ -202,7 +206,7 @@ class TripDetailController extends GetxController {
 
   /// Liga o acompanhamento do carro quando a viagem está acontecendo (e desliga quando acaba).
   void _syncTracking() {
-    final shouldTrack = canSeeTrip && inTripWindow;
+    final shouldTrack = canGoLive;
     if (shouldTrack && !_tracking) {
       _tracking = true;
       _tracker.start();
@@ -211,7 +215,27 @@ class TripDetailController extends GetxController {
       _tracker.stop();
       if (sharer.sharing.value) sharer.stop();
     }
+    _syncLive();
   }
+
+  /// Sai do modo viagem quando ela acaba; entra sozinho na primeira vez que ela está acontecendo.
+  void _syncLive() {
+    if (live.value && !canGoLive) {
+      live.value = false;
+    } else if (!_autoLiveDone && canGoLive) {
+      _autoLiveDone = true;
+      enterLive();
+    }
+  }
+
+  /// Entra no modo viagem; o motorista já começa a compartilhar a posição.
+  void enterLive() {
+    if (!canGoLive) return;
+    live.value = true;
+    if (isDriver && !sharer.sharing.value) toggleSharing();
+  }
+
+  void exitLive() => live.value = false;
 
   void message(Person person) => Get.toNamed(Routes.chat, arguments: person);
 
@@ -262,7 +286,7 @@ class TripDetailController extends GetxController {
   }
 
   Future<void> complete() async {
-    final waiting = passengers.where((p) => p.stage == BookingStage.confirmed).length;
+    final waiting = confirmedWaiting;
     final ok = await confirm(
       'Concluir viagem?',
       waiting == 0

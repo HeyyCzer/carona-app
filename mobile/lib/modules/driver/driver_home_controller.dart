@@ -5,23 +5,31 @@ import '../../api/models.dart';
 import '../../services/auth_service.dart';
 import '../../services/messages_service.dart';
 import '../../ui/ui.dart';
+import '../../utils/format.dart';
 import '../home/home_controller.dart';
 
-/// Aba "Dirigir": recebimentos da semana, próxima saída e pedidos de vaga pendentes.
+/// Aba "Dirigir": recebimentos da semana, pedidos de vaga pendentes e as saídas (em andamento e próximas).
 class DriverHomeController extends GetxController {
   final CaronaApi _api = Get.find();
   final AuthService _auth = Get.find();
   final MessagesService _messages = Get.find();
 
   final earnings = Rxn<Earnings>();
-  final nextRide = Rxn<Ride>();
   final requests = <RideRequest>[].obs;
-  final awaitingCompletion = 0.obs;
+
+  /// Já saíram e esperam o motorista concluir.
+  final inProgress = <Ride>[].obs;
+  final upcoming = <Ride>[].obs;
   final loading = false.obs;
   final error = RxnString();
 
   /// Pedidos sendo aceitos/recusados agora (para desabilitar os botões).
   final processing = <int>{}.obs;
+
+  /// Caronas sendo canceladas agora.
+  final cancelling = <int>{}.obs;
+
+  Ride? get nextRide => upcoming.firstOrNull;
 
   @override
   void onInit() {
@@ -45,16 +53,36 @@ class DriverHomeController extends GetxController {
         _api.drivingInProgress(),
       ]);
       earnings.value = results[0] as Earnings;
-      final rides = results[1] as List<Ride>;
-      nextRide.value = rides.firstOrNull;
+      upcoming.assignAll(results[1] as List<Ride>);
       requests.assignAll(results[2] as List<RideRequest>);
-      awaitingCompletion.value = (results[3] as List<Ride>).length;
+      inProgress.assignAll(results[3] as List<Ride>);
 
       _messages.addContacts(requests.map((r) => r.passenger));
     } catch (e) {
       error.value = errorMessage(e);
     } finally {
       loading.value = false;
+    }
+  }
+
+  Future<void> cancelRide(Ride ride) async {
+    final ok = await confirm(
+      'Cancelar esta carona?',
+      'A ${ride.direction.label.toLowerCase()} de ${relativeDayLong(ride.date).toLowerCase()} às ${ride.departureTime} '
+          'será cancelada para todos os passageiros. A rota continua valendo nos outros dias.',
+      confirmLabel: 'Cancelar carona',
+      destructive: true,
+    );
+    if (!ok) return;
+    cancelling.add(ride.id);
+    try {
+      await _api.cancelRide(ride.id);
+      showMessage('Carona cancelada.');
+      await load();
+    } catch (e) {
+      showMessage(errorMessage(e), error: true);
+    } finally {
+      cancelling.remove(ride.id);
     }
   }
 

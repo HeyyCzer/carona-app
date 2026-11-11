@@ -5,15 +5,27 @@ import '../../api/models.dart';
 import '../../theme.dart';
 import '../../ui/ui.dart';
 import '../../utils/format.dart';
+import 'live_trip_view.dart';
 import 'trip_detail_controller.dart';
 
 /// Detalhes de uma carona marcada: mapa com o carro, contagem para a saída, presença, embarque e passageiros.
+/// Enquanto a viagem acontece, mostra o modo viagem ([LiveTripView]) no lugar dos detalhes.
 class TripDetailView extends GetView<TripDetailController> {
   const TripDetailView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return Obx(
+      () => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: controller.live.value ? const LiveTripView(key: ValueKey('live')) : _details(),
+      ),
+    );
+  }
+
+  Widget _details() {
     return Scaffold(
+      key: const ValueKey('details'),
       body: Column(
         children: [
           SizedBox(
@@ -62,6 +74,7 @@ class TripDetailView extends GetView<TripDetailController> {
                     const SizedBox(height: 16),
                     _infoRow(),
                     const SizedBox(height: 20),
+                    if (controller.canGoLive) ...[_liveBanner(), const SizedBox(height: 16)],
                     if (controller.isDriver) ..._driverSection() else ..._passengerSection(),
                     _people(),
                   ],
@@ -96,6 +109,30 @@ class TripDetailView extends GetView<TripDetailController> {
     final pickupTime = controller.pickupTime;
     if (pickupTime == null) return arrival;
     return 'Embarque às $pickupTime · $arrival';
+  }
+
+  /// Atalho de volta para o modo viagem.
+  Widget _liveBanner() {
+    return AppCard(
+      color: AppColors.primary,
+      onTap: controller.enterLive,
+      child: const Row(
+        children: [
+          Icon(Icons.navigation_rounded, color: Colors.white),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Modo viagem', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                Text('Mapa em tela cheia, embarques e chegada', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: Colors.white),
+        ],
+      ),
+    );
   }
 
   Widget _liveRow(String text) {
@@ -265,7 +302,7 @@ class TripDetailView extends GetView<TripDetailController> {
     if (!controller.canSeeTrip) {
       return AppCard(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
-        child: _PersonRow(
+        child: TripPersonRow(
           person: ride.driver,
           subtitle: 'Motorista',
           isMe: false,
@@ -286,7 +323,7 @@ class TripDetailView extends GetView<TripDetailController> {
             style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
           ),
           const SizedBox(height: 8),
-          _PersonRow(
+          TripPersonRow(
             person: ride.driver,
             subtitle: 'Motorista',
             isMe: controller.isDriver,
@@ -301,7 +338,7 @@ class TripDetailView extends GetView<TripDetailController> {
             )
           else ...[
             for (final (i, p) in passengers.indexed)
-              _PersonRow(
+              TripPersonRow(
                 person: p.passenger,
                 subtitle: ['Passageiro #${i + 1}', if (p.pickup != null) p.pickup!.label].join(' · '),
                 stage: p.stage,
@@ -326,14 +363,15 @@ class TripDetailView extends GetView<TripDetailController> {
   }
 }
 
-class _PersonRow extends StatelessWidget {
+/// Linha de uma pessoa da carona (motorista ou passageiro), com a situação do embarque e o botão de mensagem.
+class TripPersonRow extends StatelessWidget {
   final Person person;
   final String subtitle;
   final bool isMe;
   final BookingStage? stage;
   final VoidCallback? onMessage;
 
-  const _PersonRow({required this.person, required this.subtitle, required this.isMe, this.stage, this.onMessage});
+  const TripPersonRow({super.key, required this.person, required this.subtitle, required this.isMe, this.stage, this.onMessage});
 
   /// Para o motorista, a situação do embarque de cada passageiro.
   static String _stageText(BookingStage stage) => switch (stage) {
